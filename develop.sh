@@ -1,0 +1,1 @@
+elm-live  --pushstate --open --dir public-elm -- src/Main.elm --output=public-elm/flashcard-elm.js --debug
