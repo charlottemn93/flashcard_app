@@ -1,14 +1,16 @@
-port module Ports exposing (attemptLogIn, logInFailed)
+port module Ports exposing (attemptLogIn, logInFailed, signup, signupFailed, signupSuccess)
 
 import Json.Decode exposing (Value)
 
 
 
--- port module Ports exposing (attemptLogIn, signup, signupFailed, signupSuccess)
 -- OUTGOING
 
 
 port attemptLogIn : { emailAddressOrUsername : String, password : String } -> Cmd msg
+
+
+port signup : { emailAddress : String, password : String, username : String, phoneNumber : String } -> Cmd msg
 
 
 
@@ -18,7 +20,7 @@ port attemptLogIn : { emailAddressOrUsername : String, password : String } -> Cm
 port logInFailed : (Value -> msg) -> Sub msg
 
 
+port signupFailed : (Value -> msg) -> Sub msg
 
--- port signup : { emailAddress : String, password : String, username : String } -> Cmd msg
--- port signupFailed : (String -> msg) -> Sub msg
--- port signupSuccess : (String -> msg) -> Sub msg
+
+port signupSuccess : (Value -> msg) -> Sub msg

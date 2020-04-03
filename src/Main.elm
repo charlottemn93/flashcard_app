@@ -4,7 +4,6 @@ import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
 import Credentials exposing (Credentials)
 import Element exposing (text)
-import ElementLibrary.Style as Style
 import Page.Login as LoginPage
 import Page.ManageFlashcards as ManageFlashcardsPage
 import Route exposing (Route(..), routeFromUrl)
@@ -137,7 +136,7 @@ view : Model -> Document Msg
 view { state } =
     { title = "Flashcards app"
     , body =
-        [ Element.layout Style.globalLayout
+        [ Element.layout []
             (case state of
                 ViewingManageFlashcards model ->
                     ManageFlashcardsPage.view model

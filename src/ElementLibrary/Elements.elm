@@ -1,8 +1,8 @@
-module ElementLibrary.Elements exposing (checkbox, dangerButton, errorMessage, infoMessage, inputField, primaryButton, successButton, successfulMessage)
+module ElementLibrary.Elements exposing (checkbox, dangerButton, errorMessage, heading, infoMessage, inputField, passwordInputField, primaryButton, successButton, successfulMessage)
 
-import Element exposing (Element, column, el, fill, paragraph, text, width)
+import Element exposing (Element, column, el, fill, paddingEach, paragraph, text, width)
 import Element.Input as Input
-import ElementLibrary.Style as Style exposing (ButtonType(..), MessageType(..))
+import ElementLibrary.Style as Style exposing (ButtonType(..), HeadingLevel(..), MessageType(..), edges)
 
 
 
@@ -42,6 +42,30 @@ message messageType messageStr =
 
 
 
+-- HEADINGS
+
+
+heading : HeadingLevel -> String -> Element msg
+heading headingLevel str =
+    el
+        (case headingLevel of
+            One ->
+                Style.heading1
+
+            Two ->
+                Style.heading2
+
+            Three ->
+                Style.heading3
+
+            Four ->
+                Style.heading4
+        )
+    <|
+        paragraph [] [ text str ]
+
+
+
 -- INPUT FIELDS
 
 
@@ -49,11 +73,12 @@ type alias InputFieldValues msg =
     { fieldTitle : String
     , messageOnChange : String -> msg
     , fieldValue : String
+    , required : Bool
     }
 
 
 inputField : InputFieldValues msg -> Element msg
-inputField { fieldTitle, messageOnChange, fieldValue } =
+inputField { fieldTitle, messageOnChange, fieldValue, required } =
     column
         [ width fill
         ]
@@ -61,8 +86,47 @@ inputField { fieldTitle, messageOnChange, fieldValue } =
             { onChange = messageOnChange
             , text = fieldValue
             , placeholder = Nothing
-            , label = Input.labelAbove [] (text fieldTitle)
+            , label = Style.inputFieldLabel fieldTitle
             }
+        , if required == True && String.isEmpty fieldValue then
+            el
+                (Style.dangerText
+                    ++ [ paddingEach { edges | top = 5, bottom = 20 } ]
+                )
+            <|
+                text <|
+                    fieldTitle
+                        ++ " is required"
+
+          else
+            Element.none
+        ]
+
+
+passwordInputField : InputFieldValues msg -> Element msg
+passwordInputField { fieldTitle, messageOnChange, fieldValue, required } =
+    column
+        [ width fill
+        ]
+        [ Input.currentPassword Style.inputField
+            { onChange = messageOnChange
+            , text = fieldValue
+            , placeholder = Nothing
+            , label = Style.inputFieldLabel fieldTitle
+            , show = False
+            }
+        , if required == True && String.isEmpty fieldValue then
+            el
+                (Style.dangerText
+                    ++ [ paddingEach { edges | top = 5, bottom = 20 } ]
+                )
+            <|
+                text <|
+                    fieldTitle
+                        ++ " is required"
+
+          else
+            Element.none
         ]
 
 
@@ -74,7 +138,7 @@ checkbox :
     -> Element msg
 checkbox { messageOnChecked, labelText, boxChecked } =
     column [ width fill ]
-        [ Input.checkbox []
+        [ Input.checkbox Style.checkbox
             { onChange = messageOnChecked
             , icon = Input.defaultCheckbox
             , checked = boxChecked

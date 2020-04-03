@@ -1,32 +1,141 @@
-module ElementLibrary.Style exposing (ButtonType(..), MessageType(..), button, errorMessage, globalLayout, infoMessage, inputField, successfulMessage)
+module ElementLibrary.Style exposing
+    ( ButtonType(..)
+    , HeadingLevel(..)
+    , MessageType(..)
+    , button
+    , checkbox
+    , dangerText
+    , edges
+    , errorMessage
+    , heading1
+    , heading2
+    , heading3
+    , heading4
+    , infoMessage
+    , inputField
+    , inputFieldLabel
+    , successfulMessage
+    )
 
 import Element
     exposing
         ( Attribute
+        , centerX
         , fill
+        , height
         , padding
+        , paddingEach
+        , paddingXY
+        , px
         , rgb255
         , rgba255
+        , text
         , width
         )
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
+import Element.Input exposing (Label, labelAbove)
 import Element.Region as Region
 
 
 
--- GLOBAL
+-- HELPERS
 
 
-globalLayout : List (Attribute msg)
-globalLayout =
-    [ Font.size 14
+edges : { top : Int, bottom : Int, left : Int, right : Int }
+edges =
+    -- use this for things like Element.paddingEach - override the edges that you need like { edges | bottom = 20 }
+    { top = 0
+    , bottom = 0
+    , left = 0
+    , right = 0
+    }
+
+
+
+-- HEADINGS
+
+
+type HeadingLevel
+    = One
+    | Two
+    | Three
+    | Four
+
+
+heading1 : List (Attribute msg)
+heading1 =
+    [ Region.heading 1
+    , Font.size 48
+    , Font.color <| rgb255 0 173 238
+    , paddingEach
+        { edges
+            | bottom = 10
+        }
+    , centerX
+    ]
+
+
+heading2 : List (Attribute msg)
+heading2 =
+    [ Region.heading 2
+    , Font.size 23
+    , paddingEach
+        { edges
+            | top = 10
+            , bottom = 10
+        }
+    , Font.color <| rgb255 85 85 85
+    ]
+
+
+heading3 : List (Attribute msg)
+heading3 =
+    [ Region.heading 3
+    , Font.size 23
+    , Font.color <| rgb255 252 175 29
+    ]
+
+
+heading4 : List (Attribute msg)
+heading4 =
+    [ Region.heading 4
+    , Font.size 18
+    , Font.color <| rgb255 252 175 29
     ]
 
 
 
 -- DISPLAY ONLY
+
+
+inputFieldLabel : String -> Label msg
+inputFieldLabel labelText =
+    labelAbove
+        [ Font.size 14
+        , Font.bold
+        , paddingEach
+            { edges
+                | bottom = 5
+                , top = 10
+            }
+        ]
+        (text labelText)
+
+
+dangerText : List (Attribute msg)
+dangerText =
+    [ width fill
+    , paddingXY 0 3
+    , Font.size 14
+    , height <| px 10
+    , Font.family
+        [ Font.typeface "Open Sans"
+        , Font.sansSerif
+        ]
+    , Font.color <| rgb255 169 68 66
+    ]
 
 
 type MessageType
@@ -92,6 +201,11 @@ inputField =
         , Font.sansSerif
         ]
     ]
+
+
+checkbox : List (Attribute msg)
+checkbox =
+    [ Font.size 14 ]
 
 
 
