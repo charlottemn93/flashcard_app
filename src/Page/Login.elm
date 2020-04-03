@@ -4,7 +4,7 @@ import Element exposing (Element, alignTop, centerX, centerY, column, el, fill, 
 import ElementLibrary.Elements exposing (errorMessage, heading, inputField, passwordInputField, primaryButton, successfulMessage)
 import ElementLibrary.Style exposing (HeadingLevel(..), edges)
 import Json.Decode as Decode
-import Ports exposing (attemptLogIn, logInFailed, signup, signupFailed, signupSuccess)
+import Ports.Login exposing (attemptLogIn, logInFailed, signup, signupFailed, signupSuccess, verificationFailed, verificationSuccessful, verifyAccount)
 
 
 
@@ -12,7 +12,7 @@ import Ports exposing (attemptLogIn, logInFailed, signup, signupFailed, signupSu
 
 
 type alias LoginDetails =
-    { emailAddressOrUsername : String
+    { username : String
     , password : String
     }
 
@@ -22,28 +22,47 @@ type alias SignupDetails =
     , emailAddress : String
     , password : String
     , passwordConfirmation : String
-    , phoneNumber : String
+    }
+
+
+type MessageType
+    = Success
+    | Error
+
+
+type alias Message =
+    { messageType : MessageType
+    , messageString : String
     }
 
 
 type Model
-    = LoggedOut LoginDetails SignupDetails (Maybe String)
-    | SignedUp String
+    = LoggedOut LoginDetails SignupDetails (Maybe Message)
+    | SignedUp { verificationCode : String, username : String, errorString : Maybe String }
 
 
 initialModel : Model
 initialModel =
     LoggedOut
-        { emailAddressOrUsername = ""
-        , password = ""
-        }
-        { username = ""
-        , emailAddress = ""
-        , password = ""
-        , passwordConfirmation = ""
-        , phoneNumber = ""
-        }
+        initialLoginDetails
+        initialSignupDetails
         Nothing
+
+
+initialLoginDetails : LoginDetails
+initialLoginDetails =
+    { username = ""
+    , password = ""
+    }
+
+
+initialSignupDetails : SignupDetails
+initialSignupDetails =
+    { username = ""
+    , emailAddress = ""
+    , password = ""
+    , passwordConfirmation = ""
+    }
 
 
 
@@ -55,18 +74,21 @@ type Msg
     | LogInAttemptFailed (Result Decode.Error String)
     | UpdateField Field
     | SignUp
-    | SignupSuccessful (Result Decode.Error String)
+    | SignupSuccessful
     | SignupFailed (Result Decode.Error String)
+    | VerifyAccount
+    | VerificationSuccessful
+    | VerificationFailed (Result Decode.Error String)
 
 
 type Field
-    = EmailAddressOrUsername String
+    = Username String
     | Password String
-    | Username String
+    | SignupUsername String
     | EmailAddress String
     | SignupPassword String
     | SignupPasswordConfirmation String
-    | PhoneNumber String
+    | VerificationCode String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -80,12 +102,12 @@ update msg model =
                 UpdateField (Password password) ->
                     ( LoggedOut { loginDetails | password = password } signupDetails errorMessage, Cmd.none )
 
-                UpdateField (EmailAddressOrUsername emailAddressOrUsername) ->
-                    ( LoggedOut { loginDetails | emailAddressOrUsername = emailAddressOrUsername } signupDetails errorMessage
+                UpdateField (Username username) ->
+                    ( LoggedOut { loginDetails | username = username } signupDetails errorMessage
                     , Cmd.none
                     )
 
-                UpdateField (Username username) ->
+                UpdateField (SignupUsername username) ->
                     ( LoggedOut loginDetails { signupDetails | username = username } errorMessage
                     , Cmd.none
                     )
@@ -105,54 +127,125 @@ update msg model =
                     , Cmd.none
                     )
 
-                UpdateField (PhoneNumber phoneNumber) ->
-                    ( LoggedOut loginDetails { signupDetails | phoneNumber = phoneNumber } errorMessage
-                    , Cmd.none
-                    )
-
                 LogInAttemptFailed result ->
                     case result of
                         -- get the more specific error message returned from the port, or display the reason the string decoder failed to the developer
                         Ok newErrorMessage ->
-                            ( LoggedOut loginDetails signupDetails (Just newErrorMessage), Cmd.none )
+                            ( LoggedOut loginDetails
+                                signupDetails
+                              <|
+                                Just
+                                    { messageString = newErrorMessage
+                                    , messageType = Error
+                                    }
+                            , Cmd.none
+                            )
 
                         Err error ->
-                            ( LoggedOut loginDetails signupDetails (Just <| "Something went wrong failing the log in attempt. Problem: " ++ Decode.errorToString error), Cmd.none )
+                            ( LoggedOut loginDetails signupDetails <|
+                                Just
+                                    { messageString = "Something went wrong failing the log in attempt. Problem: " ++ Decode.errorToString error
+                                    , messageType = Error
+                                    }
+                            , Cmd.none
+                            )
 
                 SignUp ->
                     if anySignUpFieldsAreEmpty signupDetails then
-                        ( LoggedOut loginDetails signupDetails (Just <| "Cannot sign up - some required fields are empty."), Cmd.none )
+                        ( LoggedOut loginDetails signupDetails <|
+                            Just
+                                { messageString = "Cannot sign up - some required fields are empty."
+                                , messageType = Error
+                                }
+                        , Cmd.none
+                        )
 
                     else if not <| passwordsMatch signupDetails then
-                        ( LoggedOut loginDetails signupDetails (Just <| "Passwords don't match"), Cmd.none )
+                        ( LoggedOut loginDetails signupDetails <|
+                            Just
+                                { messageString = "Passwords don't match"
+                                , messageType = Error
+                                }
+                        , Cmd.none
+                        )
 
                     else
                         ( model
                         , signup
                             { username = signupDetails.username
                             , emailAddress = signupDetails.emailAddress
-                            , phoneNumber = signupDetails.phoneNumber
                             , password = signupDetails.password
                             }
                         )
 
-                SignupSuccessful (Ok username) ->
-                    ( SignedUp <| "Sign up successful! Please verify your account via SMS, " ++ username, Cmd.none )
-
-                SignupSuccessful (Err error) ->
-                    ( LoggedOut loginDetails signupDetails (Just <| "Sign up successful, but failed to get response. Problem: " ++ Decode.errorToString error), Cmd.none )
+                SignupSuccessful ->
+                    ( SignedUp { verificationCode = "", errorString = Nothing, username = signupDetails.username }, Cmd.none )
 
                 SignupFailed result ->
                     case result of
                         -- get the more specific error message returned from the port, or display the reason the string decoder failed to the developer
                         Ok errorString ->
-                            ( LoggedOut loginDetails signupDetails (Just errorString), Cmd.none )
+                            ( LoggedOut loginDetails signupDetails <|
+                                Just
+                                    { messageString = errorString
+                                    , messageType = Error
+                                    }
+                            , Cmd.none
+                            )
 
                         Err error ->
-                            ( LoggedOut loginDetails signupDetails (Just <| "Sign up failed. Failed to decode error message. Problem: " ++ Decode.errorToString error), Cmd.none )
+                            ( LoggedOut loginDetails signupDetails <|
+                                Just
+                                    { messageString = "Sign up failed. Failed to decode error message. Problem: " ++ Decode.errorToString error
+                                    , messageType = Error
+                                    }
+                            , Cmd.none
+                            )
 
-        SignedUp _ ->
-            ( model, Cmd.none )
+                _ ->
+                    ( LoggedOut loginDetails signupDetails <|
+                        Just
+                            { messageString = "Unexpected msg received in logged out state."
+                            , messageType = Error
+                            }
+                    , Cmd.none
+                    )
+
+        SignedUp details ->
+            case msg of
+                VerifyAccount ->
+                    ( model
+                    , verifyAccount
+                        { username = details.username
+                        , verificationCode = details.verificationCode
+                        }
+                    )
+
+                UpdateField (VerificationCode code) ->
+                    ( SignedUp { details | verificationCode = code }, Cmd.none )
+
+                VerificationSuccessful ->
+                    ( LoggedOut initialLoginDetails
+                        initialSignupDetails
+                      <|
+                        Just
+                            { messageString = "Verification successful! Please log in."
+                            , messageType = Success
+                            }
+                    , Cmd.none
+                    )
+
+                VerificationFailed result ->
+                    case result of
+                        -- get the more specific error message returned from the port, or display the reason the string decoder failed to the developer
+                        Ok errorString ->
+                            ( SignedUp { details | errorString = Just errorString }, Cmd.none )
+
+                        Err error ->
+                            ( SignedUp { details | errorString = Just <| "Verification failed. Failed to decode error message. Problem: " ++ Decode.errorToString error }, Cmd.none )
+
+                _ ->
+                    ( SignedUp { details | errorString = Just "Unexpected msg received in signed up state." }, Cmd.none )
 
 
 passwordsMatch : SignupDetails -> Bool
@@ -161,12 +254,11 @@ passwordsMatch { password, passwordConfirmation } =
 
 
 anySignUpFieldsAreEmpty : SignupDetails -> Bool
-anySignUpFieldsAreEmpty { username, emailAddress, password, passwordConfirmation, phoneNumber } =
+anySignUpFieldsAreEmpty { username, emailAddress, password, passwordConfirmation } =
     String.isEmpty username
         || String.isEmpty emailAddress
         || String.isEmpty password
         || String.isEmpty passwordConfirmation
-        || String.isEmpty phoneNumber
 
 
 
@@ -174,7 +266,7 @@ anySignUpFieldsAreEmpty { username, emailAddress, password, passwordConfirmation
 
 
 loginOptionsView : LoginDetails -> SignupDetails -> Element Msg
-loginOptionsView { emailAddressOrUsername, password } signupDetails =
+loginOptionsView { username, password } signupDetails =
     column
         [ width fill
         , height fill
@@ -187,9 +279,9 @@ loginOptionsView { emailAddressOrUsername, password } signupDetails =
             , alignTop
             ]
             [ inputField
-                { fieldTitle = "Username or email address"
-                , messageOnChange = \str -> UpdateField <| EmailAddressOrUsername str
-                , fieldValue = emailAddressOrUsername
+                { fieldTitle = "Username"
+                , messageOnChange = \str -> UpdateField <| Username str
+                , fieldValue = username
                 , required = False
                 }
             , passwordInputField
@@ -209,7 +301,7 @@ loginOptionsView { emailAddressOrUsername, password } signupDetails =
             [ heading One "Flashcard app!"
             , inputField
                 { fieldTitle = "Username"
-                , messageOnChange = \str -> UpdateField <| Username str
+                , messageOnChange = \str -> UpdateField <| SignupUsername str
                 , fieldValue = signupDetails.username
                 , required = True
                 }
@@ -231,12 +323,6 @@ loginOptionsView { emailAddressOrUsername, password } signupDetails =
                 , fieldValue = signupDetails.passwordConfirmation
                 , required = True
                 }
-            , inputField
-                { fieldTitle = "Phone number"
-                , messageOnChange = \str -> UpdateField <| PhoneNumber str
-                , fieldValue = signupDetails.phoneNumber
-                , required = True
-                }
             , primaryButton "Sign up" <| Just SignUp
             ]
         ]
@@ -250,16 +336,39 @@ view model =
                 Nothing ->
                     loginOptionsView logInDetails signupDetails
 
-                Just errorStr ->
+                Just { messageString, messageType } ->
                     column [ width fill ]
-                        [ errorMessage errorStr
+                        [ case messageType of
+                            Error ->
+                                errorMessage messageString
+
+                            Success ->
+                                successfulMessage messageString
                         , loginOptionsView logInDetails signupDetails
                         ]
 
-        SignedUp signupMessage ->
+        SignedUp { verificationCode, errorString } ->
             column [ width fill ]
-                [ successfulMessage signupMessage
-                , primaryButton "Send SMS" Nothing
+                [ case errorString of
+                    Nothing ->
+                        Element.none
+
+                    Just str ->
+                        errorMessage str
+                , column
+                    [ width fill
+                    , padding 20
+                    , spacing 10
+                    ]
+                    [ successfulMessage "Sign up successful! A verification code will be sent to your email address in a few minutes."
+                    , inputField
+                        { fieldTitle = "Verification code"
+                        , messageOnChange = \str -> UpdateField <| VerificationCode str
+                        , fieldValue = verificationCode
+                        , required = True
+                        }
+                    , primaryButton "Verify account" <| Just VerifyAccount
+                    ]
                 ]
 
 
@@ -267,6 +376,8 @@ subscriptions : Sub Msg
 subscriptions =
     Sub.batch
         [ logInFailed <| LogInAttemptFailed << Decode.decodeValue (Decode.field "errorMessage" Decode.string)
-        , signupSuccess <| SignupSuccessful << Decode.decodeValue (Decode.field "username" Decode.string)
+        , signupSuccess <| \_ -> SignupSuccessful
         , signupFailed <| SignupFailed << Decode.decodeValue (Decode.field "errorMessage" Decode.string)
+        , verificationFailed <| VerificationFailed << Decode.decodeValue (Decode.field "errorMessage" Decode.string)
+        , verificationSuccessful (\_ -> VerificationSuccessful)
         ]
