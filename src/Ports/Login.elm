@@ -1,4 +1,4 @@
-port module Ports.Login exposing (attemptLogIn, logInFailed, signup, signupFailed, signupSuccess, verificationFailed, verificationSuccessful, verifyAccount)
+port module Ports.Login exposing (attemptLogIn, logInFailed, logInSuccessful, signup, signupFailed, signupSuccess, verificationFailed, verificationSuccessful, verifyAccount)
 
 import Json.Decode exposing (Value)
 
@@ -33,3 +33,6 @@ port verificationSuccessful : (Value -> msg) -> Sub msg
 
 
 port verificationFailed : (Value -> msg) -> Sub msg
+
+
+port logInSuccessful : (Value -> msg) -> Sub msg

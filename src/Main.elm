@@ -2,10 +2,12 @@ module Main exposing (Msg(..), update, view)
 
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
-import Credentials exposing (Credentials)
+import Credentials exposing (Credentials, credentialsDecoder)
 import Element exposing (text)
+import Json.Decode as Decode
 import Page.Login as LoginPage
 import Page.ManageFlashcards as ManageFlashcardsPage
+import Ports.Login exposing (logInSuccessful)
 import Route exposing (Route(..), routeFromUrl)
 import Url exposing (Url)
 
@@ -42,6 +44,7 @@ type Msg
     | ManageFlashcardsMsg ManageFlashcardsPage.Msg
     | ActivatedLink Browser.UrlRequest
     | LoginMsg LoginPage.Msg
+    | LogInSuccessful (Result Decode.Error Credentials)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -49,6 +52,21 @@ update msg model =
     case model.cred of
         Nothing ->
             case msg of
+                LogInSuccessful (Ok cred) ->
+                    let
+                        ( manageFlashcardsModel, manageFlashcardsCommand ) =
+                            ManageFlashcardsPage.initialModel
+                    in
+                    ( { model
+                        | cred = Just cred
+                        , state = ViewingManageFlashcards manageFlashcardsModel
+                      }
+                    , Cmd.map ManageFlashcardsMsg manageFlashcardsCommand
+                    )
+
+                LogInSuccessful (Err error) ->
+                    ( { model | state = Problem <| Decode.errorToString error }, Cmd.none )
+
                 LoginMsg loginMsg ->
                     case model.state of
                         ViewingLogin loginModel ->
@@ -126,6 +144,9 @@ update msg model =
                             ( { model | state = Problem "Problem: Received unexpected login msg when state was not in viewing login page." }
                             , Cmd.none
                             )
+
+                LogInSuccessful _ ->
+                    ( { model | state = Problem "Already logged in!" }, Cmd.none )
 
 
 
@@ -215,4 +236,7 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.map LoginMsg <| LoginPage.subscriptions
+    Sub.batch
+        [ Sub.map LoginMsg <| LoginPage.subscriptions
+        , logInSuccessful <| LogInSuccessful << Decode.decodeValue credentialsDecoder
+        ]

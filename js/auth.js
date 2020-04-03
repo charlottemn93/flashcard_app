@@ -71,9 +71,13 @@ function auth(app) {
           } else {
             // Instantiate aws sdk service objects now that the credentials have been updated.
             // example: var s3 = new AWS.S3();
-            console.log('Successfully logged in!');
-            localStorage.setItem('flashcard_app_id_token', result.getIdToken().getJwtToken());
-            localStorage.setItem('flashcard_app_access_token', result.getAccessToken().getJwtToken());
+            const idToken = result.getIdToken().getJwtToken();
+            const accessToken = result.getAccessToken().getJwtToken();
+            localStorage.setItem('flashcard_app_id_token', idToken);
+            localStorage.setItem('flashcard_app_access_token', accessToken);
+            app.ports.logInSuccessful.send({
+              idToken, accessToken,
+            });
           }
         });
       },
