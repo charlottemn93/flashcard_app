@@ -19,7 +19,8 @@ module.exports = {
   identityPoolId: '...',/* your identity pool id */
   userPoolId: '...',/* your user pool id */
   logins,
-};```
+};
+```
 
 Please see https://aws.amazon.com/getting-started/hands-on/build-serverless-web-app-lambda-apigateway-s3-dynamodb-cognito/ for the infrastructure, you will need to follow these steps to create a cognito pool and upload the contents of `public elm` to your S3 bucket.
 
