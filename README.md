@@ -7,7 +7,7 @@ npm i
 
 This uses AWS Cognito for sign up/verification/log in
 
-Create a js/cognito_ids.js which will include all cognito pool data:
+Create a js/cognito_ids.js which will include all cognito pool data (make sure this file is included in your .gitignore):
 ```function logins(result) {
   return {
     'cognito-idp.<REGION>.amazonaws.com/<USER_POOL_ID>': result.getIdToken().getJwtToken(),
