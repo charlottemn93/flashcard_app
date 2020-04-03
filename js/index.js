@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
       accessToken: accessToken || null,
     },
   });
-
   try {
     auth(app);
   } catch (e) {

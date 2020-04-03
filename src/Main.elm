@@ -4,6 +4,7 @@ import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
 import Credentials exposing (Credentials)
 import Element exposing (text)
+import ElementLibrary.Style as Style
 import Page.Login as LoginPage
 import Page.ManageFlashcards as ManageFlashcardsPage
 import Route exposing (Route(..), routeFromUrl)
@@ -39,7 +40,6 @@ type State
 
 type Msg
     = ChangedUrl Url
-    | LogIn
     | ManageFlashcardsMsg ManageFlashcardsPage.Msg
     | ActivatedLink Browser.UrlRequest
     | LoginMsg LoginPage.Msg
@@ -49,11 +49,27 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model.cred of
         Nothing ->
-            ( { model
-                | state = ViewingLogin LoginPage.initialModel
-              }
-            , Cmd.none
-            )
+            case msg of
+                LoginMsg loginMsg ->
+                    case model.state of
+                        ViewingLogin loginModel ->
+                            let
+                                ( updatedLoginModel, loginCommand ) =
+                                    LoginPage.update loginMsg loginModel
+                            in
+                            ( { model | state = ViewingLogin updatedLoginModel }
+                            , Cmd.map LoginMsg loginCommand
+                            )
+
+                        _ ->
+                            ( { model | state = Problem "Problem: Received unexpected login msg when state was not in viewing login page." }
+                            , Cmd.none
+                            )
+
+                _ ->
+                    ( { model | state = Problem "Error: this can only be done once logged in." }
+                    , Cmd.none
+                    )
 
         Just _ ->
             case msg of
@@ -79,10 +95,6 @@ update msg model =
                             ( { model | state = ViewingManageFlashcards manageFlashcardsModel }
                             , Cmd.map ManageFlashcardsMsg manageFlashcardsCommand
                             )
-
-                LogIn ->
-                    -- todo: login functionality
-                    ( model, Cmd.none )
 
                 ManageFlashcardsMsg manageFlashcardsMsg ->
                     case model.state of
@@ -125,17 +137,16 @@ view : Model -> Document Msg
 view { state } =
     { title = "Flashcards app"
     , body =
-        [ Element.layout []
+        [ Element.layout Style.globalLayout
             (case state of
                 ViewingManageFlashcards model ->
                     ManageFlashcardsPage.view model
 
-                ViewingLogin _ ->
+                ViewingLogin model ->
                     Element.map
                         (\message -> LoginMsg message)
                     <|
-                        Element.html <|
-                            LoginPage.view
+                        LoginPage.view model
 
                 Problem error ->
                     text error
@@ -205,4 +216,4 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.none
+    Sub.map LoginMsg <| LoginPage.subscriptions
