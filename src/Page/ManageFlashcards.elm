@@ -1,9 +1,8 @@
 module Page.ManageFlashcards exposing (Model, Msg, initialModel, update, view)
 
-import Element exposing (Element)
-import Html exposing (Html, br, button, div, h1, h2, img, input, label, node, span, text)
-import Html.Attributes exposing (disabled, id, src)
-import Html.Events exposing (onClick, onInput)
+import Element exposing (Element, centerX, column, fill, padding, row, spacing, width)
+import ElementLibrary.Elements exposing (dangerButton, errorMessage, flashcard, heading, inputField, primaryButton)
+import ElementLibrary.Style exposing (HeadingLevel(..))
 import Random exposing (Generator)
 import Random.List exposing (shuffle)
 import Task
@@ -25,7 +24,7 @@ type Result
 
 
 type Model
-    = AddFlashcard Flashcard (List Flashcard)
+    = AddFlashcard Flashcard (List Flashcard) (Maybe String)
     | NoFlashCardsRemain
     | ShowWord Flashcard (List Flashcard)
     | ShowDefinition Flashcard (List Flashcard)
@@ -56,7 +55,6 @@ initialModel =
 
 type Msg
     = ShowNext
-      -- DisplayRandomFlashcard ?
     | DisplayRandomFlashcard (List Flashcard)
     | ToggleFlashcard
     | DeleteFlashcard
@@ -87,24 +85,8 @@ saveFlashCard { word, definition } =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    -- Model
-    -- = AddFlashcard Flashcard (List Flashcard)
-    -- | NoFlashCardsRemain
-    -- | ShowWord Flashcard (List Flashcard)
-    -- | ShowDefinition Flashcard (List Flashcard)
-    -- | Problem String
-    -- type Msg
-    --     = ShowNext
-    --     | DisplayRandomFlashcard (List Flashcard)
-    --     | ToggleFlashcard
-    --     | DeleteFlashcard
-    --     | HandleAdd
-    --     | UpdateWord String
-    --     | UpdateDefinition String
-    --     | SaveFlashcard Flashcard (List Flashcard)
     case model of
-        -- todo: why update word in the middle of adding a flashcard? Take a look at this
-        AddFlashcard flashcardDetails flashcards ->
+        AddFlashcard flashcardDetails flashcards errorString ->
             case msg of
                 UpdateWord str ->
                     ( AddFlashcard
@@ -117,6 +99,7 @@ update msg model =
                                     Just str
                         }
                         flashcards
+                        errorString
                     , Cmd.none
                     )
 
@@ -131,6 +114,7 @@ update msg model =
                                     Just str
                         }
                         flashcards
+                        errorString
                     , Cmd.none
                     )
 
@@ -144,10 +128,10 @@ update msg model =
                             ( ShowWord flashCard (currentFlashcardList ++ [ flashCard ]), Cmd.none )
 
                         Err errorMsg ->
-                            ( Problem errorMsg, Cmd.none )
+                            ( AddFlashcard flashcardDetails flashcards (Just errorMsg), Cmd.none )
 
                 _ ->
-                    ( Problem "Received message in unexpected state, state is 'adding a flashcard'", Cmd.none )
+                    ( Problem "Received message in unexpected state, state is 'adding a flashcard'. Please refresh the browser, if this persists, contact the adminstrator.", Cmd.none )
 
         ShowWord currentFlashcard flashcards ->
             case msg of
@@ -179,13 +163,13 @@ update msg model =
                             ( NoFlashCardsRemain, Cmd.none )
 
                 HandleAdd ->
-                    ( AddFlashcard { word = Nothing, definition = Nothing } flashcards, Cmd.none )
+                    ( AddFlashcard { word = Nothing, definition = Nothing } flashcards Nothing, Cmd.none )
 
                 ToggleFlashcard ->
                     ( ShowDefinition currentFlashcard flashcards, Cmd.none )
 
                 _ ->
-                    ( Problem "Received message in unexpected state, state is 'showing word'", Cmd.none )
+                    ( Problem "Received message in unexpected state, state is 'showing word'. Please refresh the browser, if this persists, contact the adminstrator.", Cmd.none )
 
         ShowDefinition currentFlashcard flashcards ->
             case msg of
@@ -217,141 +201,108 @@ update msg model =
                             ( NoFlashCardsRemain, Cmd.none )
 
                 HandleAdd ->
-                    ( AddFlashcard { word = Nothing, definition = Nothing } flashcards, Cmd.none )
+                    ( AddFlashcard { word = Nothing, definition = Nothing } flashcards Nothing, Cmd.none )
 
                 ToggleFlashcard ->
                     ( ShowWord currentFlashcard flashcards, Cmd.none )
 
                 _ ->
-                    ( Problem "Received message in unexpected state, state is 'showing definition'", Cmd.none )
+                    ( Problem "Received message in unexpected state, state is 'showing definition'. Please refresh the browser, if this persists, contact the adminstrator.", Cmd.none )
 
         NoFlashCardsRemain ->
             case msg of
                 HandleAdd ->
-                    ( AddFlashcard { word = Nothing, definition = Nothing } [], Cmd.none )
+                    ( AddFlashcard { word = Nothing, definition = Nothing } [] Nothing, Cmd.none )
 
                 _ ->
                     ( NoFlashCardsRemain, Cmd.none )
 
         Problem _ ->
-            -- todo: add "go back" functionality
             ( model, Cmd.none )
 
 
 
 ---- VIEW ----
--- todo: change to elm UI
 
 
-addingFlashcardView : Flashcard -> List Flashcard -> Html Msg
-addingFlashcardView { word, definition } flashcards =
-    div []
-        [ h1 [] [ text "Flash 'em - the flash card app" ]
-        , label [] [ text "Word" ]
-        , input [ onInput UpdateWord ] []
-        , br [] []
-        , label [] [ text "Definition" ]
-        , input [ onInput UpdateDefinition ] []
-        , br [] []
-        , button
-            [ onClick (SaveFlashcard { word = word, definition = definition } flashcards) ]
-            [ text "Save" ]
-        ]
+addingFlashcardView : Flashcard -> List Flashcard -> Maybe String -> Element Msg
+addingFlashcardView { word, definition } flashcards errorString =
+    column
+        [ width fill ]
+        [ case errorString of
+            Nothing ->
+                Element.none
 
-
-
--- todo: change to elm UI
-
-
-showingFlashcardDefinition : Flashcard -> Html Msg
-showingFlashcardDefinition { definition } =
-    div []
-        [ h1 [] [ text "Flash 'em - the flash card app" ]
-        , node "flashcard"
-            [ onClick ToggleFlashcard ]
-            [ text <|
-                case definition of
-                    Nothing ->
-                        ""
-
-                    Just def ->
-                        def
+            Just str ->
+                errorMessage str
+        , column
+            [ width fill
+            , centerX
+            , spacing 20
+            , padding 20
             ]
-        , br [] []
-        , button
-            [ onClick ShowNext ]
-            [ text "Next" ]
-        , br [] []
-        , button
-            [ onClick HandleAdd ]
-            [ text "Add" ]
-        , button
-            [ onClick DeleteFlashcard ]
-            [ text "Delete" ]
-        ]
-
-
-showingFlashcardWord : Flashcard -> Html Msg
-showingFlashcardWord { word } =
-    div []
-        [ h1 [] [ text "Flash 'em - the flash card app" ]
-        , node "flashcard"
-            [ onClick ToggleFlashcard ]
-            [ text <|
-                case word of
-                    Nothing ->
-                        ""
-
-                    Just str ->
-                        str
+            [ heading One "Flash 'em - the flash card app"
+            , inputField
+                { fieldTitle = "Word"
+                , fieldValue = Maybe.withDefault "" word
+                , messageOnChange = UpdateWord
+                , required = True
+                }
+            , inputField
+                { fieldTitle = "Definition"
+                , fieldValue = Maybe.withDefault "" definition
+                , messageOnChange = UpdateDefinition
+                , required = True
+                }
+            , primaryButton "Save" <| Just (SaveFlashcard { word = word, definition = definition } flashcards)
             ]
-        , br [] []
-        , button
-            [ onClick ShowNext ]
-            [ text "Next" ]
-        , br [] []
-        , button
-            [ onClick HandleAdd ]
-            [ text "Add" ]
-        , button
-            [ onClick DeleteFlashcard ]
-            [ text "Delete" ]
         ]
 
 
-
--- todo: change to elm UI
+showingFlashcard : Maybe String -> Element Msg
+showingFlashcard wordOrDef =
+    column
+        [ width fill
+        , centerX
+        , spacing 20
+        , padding 20
+        ]
+        [ heading One "Flash 'em - the flash card app"
+        , flashcard ToggleFlashcard <| Maybe.withDefault "" wordOrDef
+        , row
+            [ width fill
+            , spacing 10
+            ]
+            [ primaryButton "Next" <| Just ShowNext
+            , primaryButton "Add" <| Just HandleAdd
+            , dangerButton "Delete" <| Just DeleteFlashcard
+            ]
+        ]
 
 
 view : Model -> Element Msg
 view model =
-    Element.html <|
-        case model of
-            AddFlashcard flashcard flashcards ->
-                addingFlashcardView flashcard flashcards
+    case model of
+        AddFlashcard flashcard flashcards errorString ->
+            addingFlashcardView flashcard flashcards errorString
 
-            ShowWord currentFlashcard _ ->
-                showingFlashcardWord currentFlashcard
+        ShowWord { word } _ ->
+            showingFlashcard word
 
-            ShowDefinition currentFlashcard _ ->
-                showingFlashcardDefinition currentFlashcard
+        ShowDefinition { definition } _ ->
+            showingFlashcard definition
 
-            NoFlashCardsRemain ->
-                div []
-                    [ h2 [] [ text "No Flash Cards Remain - Add one!" ]
-                    , br [] []
-                    , button
-                        [ onClick HandleAdd ]
-                        [ text "Add" ]
-                    ]
+        NoFlashCardsRemain ->
+            column
+                [ width fill
+                , centerX
+                , spacing 20
+                , padding 20
+                ]
+                [ heading One "No Flash Cards Remain - Add one!"
+                , primaryButton "Add" <| Just HandleAdd
+                ]
 
-            Problem errorMessage ->
-                div []
-                    [ node "error"
-                        []
-                        [ text errorMessage
-                        ]
-                    , br [] []
-
-                    -- todo: back button
-                    ]
+        Problem errorString ->
+            column [ width fill ]
+                [ errorMessage errorString ]

@@ -1,4 +1,4 @@
-module ElementLibrary.Elements exposing (checkbox, dangerButton, errorMessage, heading, infoMessage, inputField, passwordInputField, primaryButton, successButton, successfulMessage)
+module ElementLibrary.Elements exposing (checkbox, dangerButton, errorMessage, flashcard, heading, infoMessage, inputField, passwordInputField, primaryButton, successButton, successfulMessage)
 
 import Element exposing (Element, column, el, fill, paddingEach, paragraph, text, width)
 import Element.Input as Input
@@ -183,5 +183,14 @@ button onClickMsg buttonType str =
                     }
         )
         { onPress = onClickMsg
+        , label = text str
+        }
+
+
+flashcard : msg -> String -> Element msg
+flashcard onClickMsg str =
+    Input.button
+        Style.flashcard
+        { onPress = Just onClickMsg
         , label = text str
         }

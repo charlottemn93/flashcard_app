@@ -7,6 +7,7 @@ module ElementLibrary.Style exposing
     , dangerText
     , edges
     , errorMessage
+    , flashcard
     , heading1
     , heading2
     , heading3
@@ -255,3 +256,17 @@ button { buttonType, disabled } =
                         Background.color <| rgb255 51 122 183
                     ]
            )
+
+
+flashcard : List (Attribute msg)
+flashcard =
+    [ Font.size 36
+    , padding 10
+    , Border.shadow
+        { blur = 3
+        , color = rgba255 0 0 0 0.2
+        , offset = ( 0, 1 )
+        , size = 1
+        }
+    , Background.color <| rgb255 255 255 136
+    ]
