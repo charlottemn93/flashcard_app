@@ -53,15 +53,11 @@ update msg model =
         Nothing ->
             case msg of
                 LogInSuccessful (Ok cred) ->
-                    let
-                        ( manageFlashcardsModel, manageFlashcardsCommand ) =
-                            ManageFlashcardsPage.initialModel
-                    in
                     ( { model
                         | cred = Just cred
-                        , state = ViewingManageFlashcards manageFlashcardsModel
+                        , state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel
                       }
-                    , Cmd.map ManageFlashcardsMsg manageFlashcardsCommand
+                    , Cmd.none
                     )
 
                 LogInSuccessful (Err error) ->
@@ -105,12 +101,8 @@ update msg model =
                     in
                     case route of
                         ManageFlashcards ->
-                            let
-                                ( manageFlashcardsModel, manageFlashcardsCommand ) =
-                                    ManageFlashcardsPage.initialModel
-                            in
-                            ( { model | state = ViewingManageFlashcards manageFlashcardsModel }
-                            , Cmd.map ManageFlashcardsMsg manageFlashcardsCommand
+                            ( { model | state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel }
+                            , Cmd.none
                             )
 
                 ManageFlashcardsMsg manageFlashcardsMsg ->
@@ -160,7 +152,10 @@ view { state } =
         [ Element.layout []
             (case state of
                 ViewingManageFlashcards model ->
-                    ManageFlashcardsPage.view model
+                    Element.map
+                        (\message -> ManageFlashcardsMsg message)
+                    <|
+                        ManageFlashcardsPage.view model
 
                 ViewingLogin model ->
                     Element.map
@@ -204,11 +199,7 @@ init { idToken, accessToken } url key =
                 Just _ ->
                     case routeFromUrl url of
                         ManageFlashcards ->
-                            let
-                                ( manageFlashcardsModel, manageFlashcardsCommand ) =
-                                    ManageFlashcardsPage.initialModel
-                            in
-                            ( ViewingManageFlashcards manageFlashcardsModel, Cmd.map ManageFlashcardsMsg manageFlashcardsCommand )
+                            ( ViewingManageFlashcards <| ManageFlashcardsPage.initialModel, Cmd.none )
     in
     ( { cred = cred
       , state = initialState
