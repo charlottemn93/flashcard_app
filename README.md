@@ -22,7 +22,7 @@ module.exports = {
 };
 ```
 
-Please see https://aws.amazon.com/getting-started/hands-on/build-serverless-web-app-lambda-apigateway-s3-dynamodb-cognito/ for the infrastructure, you will need to follow these steps to create a cognito pool and upload the contents of `public-elm` to your S3 bucket.
+Please see https://aws.amazon.com/getting-started/hands-on/build-serverless-web-app-lambda-apigateway-s3-dynamodb-cognito/ for the infrastructure, you will need to follow these steps to create a cognito pool and upload the contents of `public-elm` to your S3 bucket and host a static website from your S3 bucket.
 
 # To build
 
@@ -31,4 +31,8 @@ Please see https://aws.amazon.com/getting-started/hands-on/build-serverless-web-
 # To run
 
 ./develop.sh - builds the Elm code and uses elm-live to build and reload the app on save.
+
+# Test the app out
+
+This is what I have built: http://flashcardapp-charlotte-neill.s3-website.eu-west-2.amazonaws.com
 
