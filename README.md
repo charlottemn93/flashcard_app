@@ -36,3 +36,15 @@ Please see https://aws.amazon.com/getting-started/hands-on/build-serverless-web-
 
 This is what I have built: http://flashcardapp-charlotte-neill.s3-website.eu-west-2.amazonaws.com
 
+# Progress
+
+Things left to do:
+
+* When we do the shuffle - do not show current flashcard in shuffle (BUG)
+* Two options - shuffle and click through in order. 
+* Make sticky notes and buttons go in the middle
+* Create a nav bar at the top and create a sign out on there
+* Forgot password functionality
+* lambda integration to save/load flashcards for user
+
+
