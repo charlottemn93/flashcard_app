@@ -9,6 +9,8 @@ import Environment as Env exposing (Environment)
 import Json.Decode as Decode
 import Page.Login as LoginPage
 import Page.ManageFlashcards as ManageFlashcardsPage
+import Page.MyAccount as MyAccountPage
+import Page.Revise as RevisePage
 import Ports.Login exposing (logInSuccessful)
 import Route exposing (Route(..), routeFromUrl)
 import Toolbar exposing (toolbarElement)
@@ -37,6 +39,8 @@ type alias Model =
 type State
     = ViewingManageFlashcards ManageFlashcardsPage.Model
     | ViewingLogin LoginPage.Model
+    | ViewingRevise RevisePage.Model
+    | ViewingMyAccount MyAccountPage.Model
     | Problem String
 
 
@@ -49,7 +53,14 @@ type Msg
     | ManageFlashcardsMsg ManageFlashcardsPage.Msg
     | ActivatedLink Browser.UrlRequest
     | LoginMsg LoginPage.Msg
+    | MyAccountMsg MyAccountPage.Msg
+    | ReviseMsg RevisePage.Msg
     | LogInSuccessful (Result Decode.Error Credentials)
+
+
+pageNotFoundProblemState : State
+pageNotFoundProblemState =
+    Problem "Page not found =["
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -110,6 +121,21 @@ update msg model =
                             , Cmd.none
                             )
 
+                        Revise ->
+                            ( { model | state = ViewingRevise <| RevisePage.initialModel }
+                            , Cmd.none
+                            )
+
+                        MyAccount ->
+                            ( { model | state = ViewingMyAccount <| MyAccountPage.initialModel }
+                            , Cmd.none
+                            )
+
+                        PageNotFound ->
+                            ( { model | state = pageNotFoundProblemState }
+                            , Cmd.none
+                            )
+
                 ManageFlashcardsMsg manageFlashcardsMsg ->
                     case model.state of
                         ViewingManageFlashcards manageFlashcardsModel ->
@@ -139,6 +165,38 @@ update msg model =
 
                         _ ->
                             ( { model | state = Problem "Problem: Received unexpected login msg when state was not in viewing login page." }
+                            , Cmd.none
+                            )
+
+                MyAccountMsg myAccountMsg ->
+                    case model.state of
+                        ViewingMyAccount myAccountModel ->
+                            let
+                                ( updatedMyAccountModel, myAccountCommand ) =
+                                    MyAccountPage.update myAccountMsg myAccountModel
+                            in
+                            ( { model | state = ViewingMyAccount updatedMyAccountModel }
+                            , Cmd.map MyAccountMsg myAccountCommand
+                            )
+
+                        _ ->
+                            ( { model | state = Problem "Problem: Received unexpected my account msg when state was not in viewing my account page." }
+                            , Cmd.none
+                            )
+
+                ReviseMsg reviseMsg ->
+                    case model.state of
+                        ViewingRevise reviseModel ->
+                            let
+                                ( updatedReviseModel, reviseCommand ) =
+                                    RevisePage.update reviseMsg reviseModel
+                            in
+                            ( { model | state = ViewingRevise updatedReviseModel }
+                            , Cmd.map ReviseMsg reviseCommand
+                            )
+
+                        _ ->
+                            ( { model | state = Problem "Problem: Received unexpected revise msg when state was not in viewing revision page." }
                             , Cmd.none
                             )
 
@@ -195,6 +253,18 @@ viewToDisplay state =
             <|
                 LoginPage.view model
 
+        ViewingRevise model ->
+            Element.map
+                (\message -> ReviseMsg message)
+            <|
+                RevisePage.view model
+
+        ViewingMyAccount model ->
+            Element.map
+                (\message -> MyAccountMsg message)
+            <|
+                MyAccountPage.view model
+
         Problem error ->
             text error
 
@@ -229,6 +299,15 @@ init { idToken, accessToken, environment } url key =
                     case routeFromUrl url of
                         ManageFlashcards ->
                             ( ViewingManageFlashcards <| ManageFlashcardsPage.initialModel, Cmd.none )
+
+                        Revise ->
+                            ( ViewingRevise <| RevisePage.initialModel, Cmd.none )
+
+                        MyAccount ->
+                            ( ViewingMyAccount <| MyAccountPage.initialModel, Cmd.none )
+
+                        PageNotFound ->
+                            ( pageNotFoundProblemState, Cmd.none )
     in
     ( { cred = cred
       , state = initialState

@@ -1,4 +1,4 @@
-module Page.ManageFlashcards exposing (Model, Msg, initialModel, update, view)
+module Page.Revise exposing (Model, Msg, initialModel, update, view)
 
 import Element exposing (Element, centerX, column, fill, padding, row, spacing, width)
 import ElementLibrary.Elements exposing (dangerButton, errorMessage, flashcard, heading, inputField, primaryButton)

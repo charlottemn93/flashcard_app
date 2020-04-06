@@ -6,6 +6,9 @@ import Url exposing (Url)
 
 type Route
     = ManageFlashcards
+    | Revise
+    | MyAccount
+    | PageNotFound
 
 
 host : Environment -> String
@@ -19,8 +22,18 @@ host env =
 
 
 routeFromUrl : Url -> Route
-routeFromUrl _ =
-    ManageFlashcards
+routeFromUrl { path } =
+    if path == "/manage-flashcards" then
+        ManageFlashcards
+
+    else if path == "/revise" then
+        Revise
+
+    else if path == "/my-account" then
+        MyAccount
+
+    else
+        PageNotFound
 
 
 hrefString : Environment -> Route -> String
@@ -28,3 +41,12 @@ hrefString env route =
     case route of
         ManageFlashcards ->
             host env ++ "/manage-flashcards"
+
+        Revise ->
+            host env ++ "/revise"
+
+        MyAccount ->
+            host env ++ "/my-account"
+
+        PageNotFound ->
+            host env ++ "/404"

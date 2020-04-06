@@ -31,7 +31,6 @@ import Element
         , fill
         , focused
         , height
-        , maximum
         , mouseOver
         , padding
         , paddingEach
@@ -40,7 +39,6 @@ import Element
         , px
         , rgb255
         , rgba255
-        , spacing
         , spacingXY
         , text
         , width
@@ -50,7 +48,6 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input exposing (Label, labelAbove)
 import Element.Region as Region
-import Html.Attributes as Attributes
 
 
 
@@ -297,22 +294,20 @@ toolbar =
     , Font.color <| rgb255 153 153 153
     , Font.size 16
     , Region.navigation
-    , spacing 8
+    , spacingXY 50 0
     ]
 
 
 toolbarIcon : List (Attribute msg)
 toolbarIcon =
     [ alignTop
-    , height <| px 16
-    , width <| px 16
+    , height <| px 32
     ]
 
 
 toolbarHighlight : List (Attr decorative msg)
 toolbarHighlight =
-    [ Background.color <| rgba255 51 122 183 0.4
-    , Font.color <| rgb255 255 255 255
+    [ Background.color <| rgb255 51 122 255
     ]
 
 
@@ -323,9 +318,9 @@ activeToolbarItem =
 
 toolbarItem : List (Attribute msg)
 toolbarItem =
-    [ width (fill |> maximum 240)
+    [ width fill
     , paddingXY 18 7
-    , spacingXY 10 0
+    , spacingXY 20 20
     , pointer
     , mouseOver toolbarHighlight
     , focused toolbarHighlight
