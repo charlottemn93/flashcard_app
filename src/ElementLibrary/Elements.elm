@@ -1,4 +1,4 @@
-module ElementLibrary.Elements exposing (button, errorMessage, flashcard, heading, infoMessage, inputField, nextButton, passwordInputField, shuffleButton, successfulMessage)
+module ElementLibrary.Elements exposing (button, errorMessage, flashcard, heading, infoMessage, inputField, nextButton, passwordInputField, previousButton, shuffleButton, successfulMessage)
 
 import Element exposing (Element, column, el, fill, paddingEach, paragraph, text, width)
 import Element.Input as Input
@@ -146,10 +146,10 @@ nextButton onClickMsg =
 
 previousButton : Maybe msg -> Element msg
 previousButton onClickMsg =
-    Input.button []
+    Input.button Style.buttonImage
         { onPress = onClickMsg
         , label =
-            Element.image []
+            Element.image Style.image
                 { src = "./images/icons/left-arrow.svg"
                 , description = "Next"
                 }

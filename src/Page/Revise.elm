@@ -1,7 +1,7 @@
 module Page.Revise exposing (Model, Msg, initialModel, update, view)
 
 import Element exposing (Element, centerX, column, el, fill, padding, row, spacing, width)
-import ElementLibrary.Elements exposing (flashcard, heading, nextButton, shuffleButton)
+import ElementLibrary.Elements exposing (flashcard, heading, nextButton, previousButton, shuffleButton)
 import Flashcard exposing (Flashcard)
 import Random exposing (Generator)
 import Random.List exposing (shuffle)
@@ -44,7 +44,7 @@ initialModel =
           , definition = Just "A nucleic acid that contains the genetic code."
           }
         ]
-        MostRecent
+        Shuffle
 
 
 
@@ -53,6 +53,7 @@ initialModel =
 
 type Msg
     = ShowNext
+    | ShowPrevious
     | DisplayRandomFlashcard (List Flashcard)
     | ToggleFlashcard
     | ChangeMode Mode
@@ -65,21 +66,6 @@ nextFlashcard currentFlashcard flashcards =
         |> List.head
 
 
-showNextFlashcard : Flashcard -> List Flashcard -> Mode -> Model
-showNextFlashcard currentFlashcard flashcards mode =
-    case nextFlashcard currentFlashcard flashcards of
-        Nothing ->
-            case List.head flashcards of
-                Nothing ->
-                    NoFlashCards
-
-                Just _ ->
-                    ShowingFlashcard Word currentFlashcard flashcards mode
-
-        Just flashcard ->
-            ShowingFlashcard Word flashcard flashcards mode
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
@@ -88,6 +74,10 @@ update msg model =
 
         ShowingFlashcard flashcardPart currentFlashcard flashcards mode ->
             case msg of
+                ShowPrevious ->
+                    -- todo
+                    ( model, Cmd.none )
+
                 ShowNext ->
                     case mode of
                         Shuffle ->
@@ -96,12 +86,23 @@ update msg model =
                             )
 
                         MostRecent ->
-                            ( showNextFlashcard currentFlashcard flashcards mode
+                            -- todo: most recent functionality
+                            ( ShowingFlashcard Word currentFlashcard flashcards mode
                             , Cmd.none
                             )
 
                 DisplayRandomFlashcard shuffledFlashcards ->
-                    ( showNextFlashcard currentFlashcard shuffledFlashcards mode, Cmd.none )
+                    case nextFlashcard currentFlashcard flashcards of
+                        Nothing ->
+                            case List.head flashcards of
+                                Nothing ->
+                                    ( NoFlashCards, Cmd.none )
+
+                                Just _ ->
+                                    ( ShowingFlashcard Word currentFlashcard shuffledFlashcards mode, Cmd.none )
+
+                        Just flashcard ->
+                            ( ShowingFlashcard Word flashcard shuffledFlashcards mode, Cmd.none )
 
                 ToggleFlashcard ->
                     case flashcardPart of
@@ -135,6 +136,11 @@ showingFlashcard wordOrDef flashcards mode =
             , centerX
             ]
             [ if List.length flashcards > 1 then
+                el [ centerX ] (previousButton <| Just ShowPrevious)
+
+              else
+                el [ centerX ] <| previousButton Nothing
+            , if List.length flashcards > 1 then
                 el [ centerX ] (nextButton <| Just ShowNext)
 
               else
