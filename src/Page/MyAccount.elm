@@ -1,6 +1,7 @@
 module Page.MyAccount exposing (Model, Msg, initialModel, update, view)
 
 import Element exposing (Element, text)
+import ElementLibrary.Elements exposing (heading)
 
 
 
@@ -35,4 +36,4 @@ update msg model =
 
 view : Model -> Element Msg
 view model =
-    text "My Account"
+    heading "My Account - coming up"

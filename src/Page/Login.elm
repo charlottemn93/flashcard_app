@@ -1,8 +1,8 @@
 module Page.Login exposing (Model, Msg, initialModel, subscriptions, update, view)
 
 import Element exposing (Element, alignTop, centerX, centerY, column, el, fill, height, padding, paddingEach, row, spacing, width)
-import ElementLibrary.Elements exposing (errorMessage, heading, inputField, passwordInputField, primaryButton, successfulMessage)
-import ElementLibrary.Style exposing (HeadingLevel(..), edges)
+import ElementLibrary.Elements exposing (button, errorMessage, heading, inputField, passwordInputField, successfulMessage)
+import ElementLibrary.Style exposing (edges)
 import Json.Decode as Decode
 import Ports.Login exposing (attemptLogIn, logInFailed, signup, signupFailed, signupSuccess, verificationFailed, verificationSuccessful, verifyAccount)
 
@@ -290,7 +290,7 @@ loginOptionsView { username, password } signupDetails =
                 , fieldValue = password
                 , required = False
                 }
-            , el [ paddingEach { edges | top = 30 } ] <| primaryButton "Log in" <| Just AttemptLogIn
+            , el [ paddingEach { edges | top = 30 } ] <| button "Log in" <| Just AttemptLogIn
             ]
         , column
             [ centerX
@@ -298,7 +298,7 @@ loginOptionsView { username, password } signupDetails =
             , width fill
             , padding 100
             ]
-            [ heading One "Flashcard app!"
+            [ heading "Flash 'em - the flash card app"
             , inputField
                 { fieldTitle = "Username"
                 , messageOnChange = \str -> UpdateField <| SignupUsername str
@@ -323,7 +323,7 @@ loginOptionsView { username, password } signupDetails =
                 , fieldValue = signupDetails.passwordConfirmation
                 , required = True
                 }
-            , primaryButton "Sign up" <| Just SignUp
+            , button "Sign up" <| Just SignUp
             ]
         ]
 
@@ -367,7 +367,7 @@ view model =
                         , fieldValue = verificationCode
                         , required = True
                         }
-                    , primaryButton "Verify account" <| Just VerifyAccount
+                    , button "Verify account" <| Just VerifyAccount
                     ]
                 ]
 

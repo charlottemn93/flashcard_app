@@ -1,8 +1,8 @@
-module ElementLibrary.Elements exposing (checkbox, dangerButton, errorMessage, flashcard, heading, infoMessage, inputField, passwordInputField, primaryButton, successButton, successfulMessage)
+module ElementLibrary.Elements exposing (button, errorMessage, flashcard, heading, infoMessage, inputField, nextButton, passwordInputField, shuffleButton, successfulMessage)
 
 import Element exposing (Element, column, el, fill, paddingEach, paragraph, text, width)
 import Element.Input as Input
-import ElementLibrary.Style as Style exposing (ButtonType(..), HeadingLevel(..), MessageType(..), edges)
+import ElementLibrary.Style as Style exposing (MessageType(..), edges)
 
 
 
@@ -45,23 +45,9 @@ message messageType messageStr =
 -- HEADINGS
 
 
-heading : HeadingLevel -> String -> Element msg
-heading headingLevel str =
-    el
-        (case headingLevel of
-            One ->
-                Style.heading1
-
-            Two ->
-                Style.heading2
-
-            Three ->
-                Style.heading3
-
-            Four ->
-                Style.heading4
-        )
-    <|
+heading : String -> Element msg
+heading str =
+    el Style.heading <|
         paragraph [] [ text str ]
 
 
@@ -130,57 +116,55 @@ passwordInputField { fieldTitle, messageOnChange, fieldValue, required } =
         ]
 
 
-checkbox :
-    { messageOnChecked : Bool -> msg
-    , labelText : String
-    , boxChecked : Bool
-    }
-    -> Element msg
-checkbox { messageOnChecked, labelText, boxChecked } =
-    column [ width fill ]
-        [ Input.checkbox Style.checkbox
-            { onChange = messageOnChecked
-            , icon = Input.defaultCheckbox
-            , checked = boxChecked
-            , label = Input.labelRight [] (text labelText)
-            }
-        ]
-
-
 
 -- BUTTONS
 
 
-primaryButton : String -> Maybe msg -> Element msg
-primaryButton str onClickMsg =
-    button onClickMsg Primary str
+shuffleButton : Bool -> Maybe msg -> Element msg
+shuffleButton shuffleOn onClickMsg =
+    Input.button Style.buttonImage
+        { onPress = onClickMsg
+        , label =
+            Element.image (Style.shuffleImage shuffleOn)
+                { src = "./images/icons/shuffle.svg"
+                , description = "Shuffle"
+                }
+        }
 
 
-dangerButton : String -> Maybe msg -> Element msg
-dangerButton str onClickMsg =
-    button onClickMsg Danger str
+nextButton : Maybe msg -> Element msg
+nextButton onClickMsg =
+    Input.button Style.buttonImage
+        { onPress = onClickMsg
+        , label =
+            Element.image Style.image
+                { src = "./images/icons/right-arrow.svg"
+                , description = "Previous"
+                }
+        }
 
 
-successButton : String -> Maybe msg -> Element msg
-successButton str onClickMsg =
-    button onClickMsg Success str
+previousButton : Maybe msg -> Element msg
+previousButton onClickMsg =
+    Input.button []
+        { onPress = onClickMsg
+        , label =
+            Element.image []
+                { src = "./images/icons/left-arrow.svg"
+                , description = "Next"
+                }
+        }
 
 
-button : Maybe msg -> ButtonType -> String -> Element msg
-button onClickMsg buttonType str =
+button : String -> Maybe msg -> Element msg
+button str onClickMsg =
     Input.button
         (case onClickMsg of
             Nothing ->
-                Style.button
-                    { buttonType = buttonType
-                    , disabled = True
-                    }
+                Style.button True
 
             Just _ ->
-                Style.button
-                    { buttonType = buttonType
-                    , disabled = False
-                    }
+                Style.button False
         )
         { onPress = onClickMsg
         , label = text str
@@ -192,5 +176,5 @@ flashcard onClickMsg str =
     Input.button
         Style.flashcard
         { onPress = Just onClickMsg
-        , label = text str
+        , label = paragraph [] [ text str ]
         }

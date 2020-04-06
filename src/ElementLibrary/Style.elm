@@ -1,21 +1,18 @@
 module ElementLibrary.Style exposing
-    ( ButtonType(..)
-    , HeadingLevel(..)
-    , MessageType(..)
+    ( MessageType(..)
     , activeToolbarItem
     , button
-    , checkbox
+    , buttonImage
     , dangerText
     , edges
     , errorMessage
     , flashcard
-    , heading1
-    , heading2
-    , heading3
-    , heading4
+    , heading
+    , image
     , infoMessage
     , inputField
     , inputFieldLabel
+    , shuffleImage
     , successfulMessage
     , toolbar
     , toolbarIcon
@@ -68,15 +65,8 @@ edges =
 -- HEADINGS
 
 
-type HeadingLevel
-    = One
-    | Two
-    | Three
-    | Four
-
-
-heading1 : List (Attribute msg)
-heading1 =
+heading : List (Attribute msg)
+heading =
     [ Region.heading 1
     , Font.size 48
     , Font.color <| rgb255 0 173 238
@@ -85,35 +75,6 @@ heading1 =
             | bottom = 10
         }
     , centerX
-    ]
-
-
-heading2 : List (Attribute msg)
-heading2 =
-    [ Region.heading 2
-    , Font.size 23
-    , paddingEach
-        { edges
-            | top = 10
-            , bottom = 10
-        }
-    , Font.color <| rgb255 85 85 85
-    ]
-
-
-heading3 : List (Attribute msg)
-heading3 =
-    [ Region.heading 3
-    , Font.size 23
-    , Font.color <| rgb255 252 175 29
-    ]
-
-
-heading4 : List (Attribute msg)
-heading4 =
-    [ Region.heading 4
-    , Font.size 18
-    , Font.color <| rgb255 252 175 29
     ]
 
 
@@ -214,23 +175,12 @@ inputField =
     ]
 
 
-checkbox : List (Attribute msg)
-checkbox =
-    [ Font.size 14 ]
-
-
 
 -- BUTTONS
 
 
-type ButtonType
-    = Danger
-    | Success
-    | Primary
-
-
-button : { buttonType : ButtonType, disabled : Bool } -> List (Attribute msg)
-button { buttonType, disabled } =
+button : Bool -> List (Attribute msg)
+button disabled =
     [ Font.color <| rgb255 255 255 255
     , Font.size 14
     , padding 10
@@ -240,38 +190,59 @@ button { buttonType, disabled } =
         , offset = ( 0, 1 )
         , size = 1
         }
+    , if disabled == True then
+        Background.color <| rgba255 51 122 183 0.4
+
+      else
+        Background.color <| rgb255 51 122 183
     ]
-        ++ (case buttonType of
-                Danger ->
-                    [ if disabled == True then
-                        Background.color <| rgba255 217 83 79 0.4
 
-                      else
-                        Background.color <| rgb255 217 83 79
-                    ]
 
-                Success ->
-                    [ if disabled == True then
-                        Background.color <| rgba255 161 205 58 0.4
+shuffleImageHighlight : List (Attr decorative msg)
+shuffleImageHighlight =
+    [ Border.glow (rgb255 46 244 41) 3.0
+    ]
 
-                      else
-                        Background.color <| rgb255 161 205 58
-                    ]
 
-                Primary ->
-                    [ if disabled == True then
-                        Background.color <| rgba255 51 122 183 0.4
+customShuffleImage : List (Attribute msg)
+customShuffleImage =
+    [ height <| px 36
+    , paddingEach
+        { edges
+            | top = 5
+            , bottom = 40
+            , left = 10
+            , right = 10
+        }
+    , Border.rounded 100
+    , pointer
+    ]
 
-                      else
-                        Background.color <| rgb255 51 122 183
-                    ]
-           )
+
+shuffleImage : Bool -> List (Attribute msg)
+shuffleImage shuffleOn =
+    if shuffleOn then
+        customShuffleImage ++ shuffleImageHighlight
+
+    else
+        customShuffleImage
+
+
+image : List (Attribute msg)
+image =
+    [ height <| px 36 ]
+
+
+buttonImage : List (Attribute msg)
+buttonImage =
+    [ focused [] ]
 
 
 flashcard : List (Attribute msg)
 flashcard =
     [ Font.size 36
-    , padding 10
+    , padding 40
+    , centerX
     , Border.shadow
         { blur = 3
         , color = rgba255 0 0 0 0.2
