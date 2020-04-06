@@ -3,12 +3,15 @@ module Main exposing (Msg(..), update, view)
 import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
 import Credentials exposing (Credentials, credentialsDecoder)
-import Element exposing (text)
+import Element exposing (Element, el, fill, paddingEach, text, width)
+import ElementLibrary.Style exposing (edges)
+import Environment as Env exposing (Environment)
 import Json.Decode as Decode
 import Page.Login as LoginPage
 import Page.ManageFlashcards as ManageFlashcardsPage
 import Ports.Login exposing (logInSuccessful)
 import Route exposing (Route(..), routeFromUrl)
+import Toolbar exposing (toolbarElement)
 import Url exposing (Url)
 
 
@@ -19,6 +22,7 @@ import Url exposing (Url)
 type alias Flags =
     { idToken : Maybe String
     , accessToken : Maybe String
+    , environment : String
     }
 
 
@@ -26,6 +30,7 @@ type alias Model =
     { cred : Maybe Credentials
     , state : State
     , navKey : Nav.Key
+    , environment : Environment
     }
 
 
@@ -146,28 +151,52 @@ update msg model =
 
 
 view : Model -> Document Msg
-view { state } =
+view { state, environment } =
     { title = "Flashcards app"
     , body =
-        [ Element.layout []
-            (case state of
-                ViewingManageFlashcards model ->
-                    Element.map
-                        (\message -> ManageFlashcardsMsg message)
-                    <|
-                        ManageFlashcardsPage.view model
+        [ case state of
+            ViewingLogin _ ->
+                Element.layout [] <| viewToDisplay state
 
-                ViewingLogin model ->
-                    Element.map
-                        (\message -> LoginMsg message)
-                    <|
-                        LoginPage.view model
+            _ ->
+                Element.layout
+                    [ case state of
+                        ViewingManageFlashcards _ ->
+                            Element.inFront (toolbarElement environment <| Just ManageFlashcards)
 
-                Problem error ->
-                    text error
-            )
+                        _ ->
+                            Element.inFront <| toolbarElement environment Nothing
+                    ]
+                <|
+                    el
+                        [ paddingEach
+                            { edges
+                                | top = 100
+                            }
+                        , width fill
+                        ]
+                        (viewToDisplay state)
         ]
     }
+
+
+viewToDisplay : State -> Element Msg
+viewToDisplay state =
+    case state of
+        ViewingManageFlashcards model ->
+            Element.map
+                (\message -> ManageFlashcardsMsg message)
+            <|
+                ManageFlashcardsPage.view model
+
+        ViewingLogin model ->
+            Element.map
+                (\message -> LoginMsg message)
+            <|
+                LoginPage.view model
+
+        Problem error ->
+            text error
 
 
 
@@ -175,7 +204,7 @@ view { state } =
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init { idToken, accessToken } url key =
+init { idToken, accessToken, environment } url key =
     let
         cred =
             idToken
@@ -204,6 +233,7 @@ init { idToken, accessToken } url key =
     ( { cred = cred
       , state = initialState
       , navKey = key
+      , environment = Env.fromString environment
       }
     , initialCommand
     )

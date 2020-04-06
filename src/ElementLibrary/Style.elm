@@ -2,6 +2,7 @@ module ElementLibrary.Style exposing
     ( ButtonType(..)
     , HeadingLevel(..)
     , MessageType(..)
+    , activeToolbarItem
     , button
     , checkbox
     , dangerText
@@ -16,20 +17,31 @@ module ElementLibrary.Style exposing
     , inputField
     , inputFieldLabel
     , successfulMessage
+    , toolbar
+    , toolbarIcon
+    , toolbarItem
     )
 
 import Element
     exposing
-        ( Attribute
+        ( Attr
+        , Attribute
+        , alignTop
         , centerX
         , fill
+        , focused
         , height
+        , maximum
+        , mouseOver
         , padding
         , paddingEach
         , paddingXY
+        , pointer
         , px
         , rgb255
         , rgba255
+        , spacing
+        , spacingXY
         , text
         , width
         )
@@ -38,6 +50,7 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input exposing (Label, labelAbove)
 import Element.Region as Region
+import Html.Attributes as Attributes
 
 
 
@@ -269,4 +282,51 @@ flashcard =
         , size = 1
         }
     , Background.color <| rgb255 255 255 136
+    ]
+
+
+
+-- TOOLBAR
+
+
+toolbar : List (Attribute msg)
+toolbar =
+    [ height <| px 50
+    , width fill
+    , Background.color <| rgb255 51 122 183
+    , Font.color <| rgb255 153 153 153
+    , Font.size 16
+    , Region.navigation
+    , spacing 8
+    ]
+
+
+toolbarIcon : List (Attribute msg)
+toolbarIcon =
+    [ alignTop
+    , height <| px 16
+    , width <| px 16
+    ]
+
+
+toolbarHighlight : List (Attr decorative msg)
+toolbarHighlight =
+    [ Background.color <| rgba255 51 122 183 0.4
+    , Font.color <| rgb255 255 255 255
+    ]
+
+
+activeToolbarItem : List (Attribute msg)
+activeToolbarItem =
+    toolbarItem ++ toolbarHighlight
+
+
+toolbarItem : List (Attribute msg)
+toolbarItem =
+    [ width (fill |> maximum 240)
+    , paddingXY 18 7
+    , spacingXY 10 0
+    , pointer
+    , mouseOver toolbarHighlight
+    , focused toolbarHighlight
     ]
