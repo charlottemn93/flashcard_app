@@ -7,7 +7,7 @@ import Time exposing (Posix)
 type alias Flashcard =
     { word : Maybe String
     , definition : Maybe String
-    , timeCreated : Posix
+    , createdDateTime : Posix
     }
 
 

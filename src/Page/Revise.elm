@@ -2,7 +2,7 @@ module Page.Revise exposing (Model, Msg, initialModel, update, view)
 
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, padding, row, spacing, width)
-import ElementLibrary.Elements exposing (errorMessage, flashcard, heading, nextButton, previousButton, shuffleButton)
+import ElementLibrary.Elements exposing (buttonImage, errorMessage, flashcard, heading, shuffleButton)
 import Flashcard as Flashcard exposing (Flashcard)
 import Random exposing (Generator)
 import Random.List exposing (shuffle)
@@ -133,8 +133,8 @@ update msg model =
                                     details.flashcards
                                         |> Dict.toList
                                         |> List.sortBy
-                                            (\( _, { timeCreated } ) ->
-                                                posixToMillis timeCreated
+                                            (\( _, { createdDateTime } ) ->
+                                                posixToMillis createdDateTime
                                             )
                                         |> List.map (\( _, f ) -> f)
                                         |> List.indexedMap (\i f -> ( i, f ))
@@ -168,16 +168,32 @@ showingFlashcard wordOrDef flashcards mode =
             , spacing 10
             , centerX
             ]
-            [ if Dict.size flashcards > 1 then
-                el [ centerX ] (previousButton <| Just ShowPrevious)
+            [ el [ centerX ]
+                (buttonImage
+                    { onClickMsg =
+                        if Dict.size flashcards > 1 then
+                            Just ShowPrevious
 
-              else
-                el [ centerX ] <| previousButton Nothing
-            , if Dict.size flashcards > 1 then
-                el [ centerX ] (nextButton <| Just ShowNext)
+                        else
+                            Nothing
+                    , src = "./images/icons/previous.svg"
+                    , description = "Previous"
+                    , specifiedImageHeight = Nothing
+                    }
+                )
+            , el [ centerX ]
+                (buttonImage
+                    { onClickMsg =
+                        if Dict.size flashcards > 1 then
+                            Just ShowNext
 
-              else
-                el [ centerX ] <| nextButton Nothing
+                        else
+                            Nothing
+                    , src = "./images/icons/next.svg"
+                    , description = "Next"
+                    , specifiedImageHeight = Nothing
+                    }
+                )
             , case mode of
                 Shuffle ->
                     el [ centerX ] <| shuffleButton True (Just <| ChangeMode MostRecent)
@@ -198,7 +214,7 @@ view model =
                 , spacing 20
                 , padding 20
                 ]
-                [ heading "No Flash Cards Remain - Add one by clicking the pencil icon!"
+                [ heading "No Flash cards exist - add one by clicking the pencil icon!"
                 ]
 
         ShowingFlashcard { flashcardPart, currentFlashcardIndex, flashcards, mode } ->

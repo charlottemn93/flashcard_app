@@ -282,13 +282,11 @@ loginOptionsView { username, password } signupDetails =
                 { fieldTitle = "Username"
                 , messageOnChange = \str -> UpdateField <| Username str
                 , fieldValue = username
-                , required = False
                 }
             , passwordInputField
                 { fieldTitle = "Password"
                 , messageOnChange = \str -> UpdateField <| Password str
                 , fieldValue = password
-                , required = False
                 }
             , el [ paddingEach { edges | top = 30 } ] <| button "Log in" <| Just AttemptLogIn
             ]
@@ -303,25 +301,21 @@ loginOptionsView { username, password } signupDetails =
                 { fieldTitle = "Username"
                 , messageOnChange = \str -> UpdateField <| SignupUsername str
                 , fieldValue = signupDetails.username
-                , required = True
                 }
             , inputField
                 { fieldTitle = "Email address"
                 , messageOnChange = \str -> UpdateField <| EmailAddress str
                 , fieldValue = signupDetails.emailAddress
-                , required = True
                 }
             , passwordInputField
                 { fieldTitle = "Password"
                 , messageOnChange = \str -> UpdateField <| SignupPassword str
                 , fieldValue = signupDetails.password
-                , required = True
                 }
             , passwordInputField
                 { fieldTitle = "Confirm password"
                 , messageOnChange = \str -> UpdateField <| SignupPasswordConfirmation str
                 , fieldValue = signupDetails.passwordConfirmation
-                , required = True
                 }
             , button "Sign up" <| Just SignUp
             ]
@@ -365,7 +359,6 @@ view model =
                         { fieldTitle = "Verification code"
                         , messageOnChange = \str -> UpdateField <| VerificationCode str
                         , fieldValue = verificationCode
-                        , required = True
                         }
                     , button "Verify account" <| Just VerifyAccount
                     ]

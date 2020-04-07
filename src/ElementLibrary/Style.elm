@@ -9,9 +9,16 @@ module ElementLibrary.Style exposing
     , flashcard
     , heading
     , image
+    , infoColumn
+    , infoItemColumn
+    , infoItemLabel
     , infoMessage
+    , infoRow
     , inputField
     , inputFieldLabel
+    , linkColour
+    , mutedColour
+    , searchField
     , shuffleImage
     , successfulMessage
     , toolbar
@@ -23,6 +30,7 @@ import Element
     exposing
         ( Attr
         , Attribute
+        , Color
         , alignTop
         , centerX
         , fill
@@ -36,6 +44,8 @@ import Element
         , px
         , rgb255
         , rgba255
+        , spaceEvenly
+        , spacing
         , spacingXY
         , text
         , width
@@ -45,6 +55,8 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input exposing (Label, labelAbove)
 import Element.Region as Region
+import Html.Events
+import Json.Decode as Decode
 
 
 
@@ -59,6 +71,25 @@ edges =
     , left = 0
     , right = 0
     }
+
+
+defaultImageHeight : Int
+defaultImageHeight =
+    36
+
+
+
+-- COLOURS
+
+
+mutedColour : Color
+mutedColour =
+    rgb255 100 122 132
+
+
+linkColour : Color
+linkColour =
+    rgb255 51 122 183
 
 
 
@@ -161,6 +192,73 @@ successfulMessage =
 
 
 
+-- INFO ROWS
+
+
+infoColumn :
+    { borderTop : Bool
+    , borderBottom : Bool
+    }
+    -> List (Attribute msg)
+infoColumn { borderTop, borderBottom } =
+    [ width fill
+    , Border.dashed
+    , Border.widthEach
+        { edges
+            | top =
+                if borderTop == True then
+                    1
+
+                else
+                    0
+            , bottom =
+                if borderBottom == True then
+                    1
+
+                else
+                    0
+        }
+    , Border.color <| rgb255 224 224 224
+    , paddingXY 0 10
+    ]
+
+
+infoRow : Bool -> List (Attribute msg)
+infoRow displayBorder =
+    (if displayBorder == True then
+        [ Border.dashed
+        , Border.widthEach
+            { edges | top = 1 }
+        , Border.color <| rgb255 224 224 224
+        ]
+
+     else
+        []
+    )
+        ++ [ spaceEvenly
+           , width fill
+           ]
+
+
+infoItemColumn : List (Attribute msg)
+infoItemColumn =
+    [ width fill
+    , paddingXY 0 10
+    , Font.size 16
+    , spacing 5
+    , alignTop
+    , Font.color <| rgb255 85 85 85
+    ]
+
+
+infoItemLabel : List (Attribute msg)
+infoItemLabel =
+    [ Font.color mutedColour
+    , Font.size 14
+    ]
+
+
+
 -- INPUT FIELDS
 
 
@@ -173,6 +271,28 @@ inputField =
         , Font.sansSerif
         ]
     ]
+
+
+onEnter : msg -> Element.Attribute msg
+onEnter msg =
+    Element.htmlAttribute
+        (Html.Events.on "keyup"
+            (Decode.field "key" Decode.string
+                |> Decode.andThen
+                    (\key ->
+                        if key == "Enter" then
+                            Decode.succeed msg
+
+                        else
+                            Decode.fail "Not the enter key"
+                    )
+            )
+        )
+
+
+searchField : msg -> List (Attribute msg)
+searchField onEnterMsg =
+    inputField ++ [ onEnter onEnterMsg ]
 
 
 
@@ -228,9 +348,14 @@ shuffleImage shuffleOn =
         customShuffleImage
 
 
-image : List (Attribute msg)
-image =
-    [ height <| px 36 ]
+image : Maybe Int -> List (Attribute msg)
+image pixels =
+    case pixels of
+        Just p ->
+            [ height <| px p ]
+
+        Nothing ->
+            [ height <| px defaultImageHeight ]
 
 
 buttonImage : List (Attribute msg)
