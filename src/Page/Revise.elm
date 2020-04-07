@@ -1,11 +1,13 @@
 module Page.Revise exposing (Model, Msg, initialModel, update, view)
 
+import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, padding, row, spacing, width)
-import ElementLibrary.Elements exposing (flashcard, heading, nextButton, previousButton, shuffleButton)
-import Flashcard exposing (Flashcard)
+import ElementLibrary.Elements exposing (errorMessage, flashcard, heading, nextButton, previousButton, shuffleButton)
+import Flashcard as Flashcard exposing (Flashcard)
 import Random exposing (Generator)
 import Random.List exposing (shuffle)
 import Task
+import Time exposing (posixToMillis)
 
 
 
@@ -18,8 +20,13 @@ type FlashcardPart
 
 
 type Model
-    = NoFlashCards
-    | ShowingFlashcard FlashcardPart Flashcard (List Flashcard) Mode
+    = ShowingFlashcard
+        { flashcardPart : FlashcardPart
+        , currentFlashcardIndex : Int
+        , flashcards : Dict Int Flashcard
+        , mode : Mode
+        }
+    | NoFlashcardsToShow
 
 
 type Mode
@@ -29,22 +36,7 @@ type Mode
 
 initialModel : Model
 initialModel =
-    ShowingFlashcard
-        Word
-        { word = Just "DNA"
-        , definition = Just "A nucleic acid that contains the genetic code."
-        }
-        [ { word = Just "Photosynthesis"
-          , definition = Just "The process by which green plants and some other organisms use sunlight to synthesize nutrients from carbon dioxide and water."
-          }
-        , { word = Just "Nucleus"
-          , definition = Just "The central part of most cells that contains genetic material and is enclosed in a membrane"
-          }
-        , { word = Just "DNA"
-          , definition = Just "A nucleic acid that contains the genetic code."
-          }
-        ]
-        Shuffle
+    NoFlashcardsToShow
 
 
 
@@ -54,73 +46,114 @@ initialModel =
 type Msg
     = ShowNext
     | ShowPrevious
-    | DisplayRandomFlashcard (List Flashcard)
+    | CreatedRandomDeck (List Int)
     | ToggleFlashcard
     | ChangeMode Mode
 
 
-nextFlashcard : Flashcard -> List Flashcard -> Maybe Flashcard
-nextFlashcard currentFlashcard flashcards =
-    flashcards
-        |> List.filter (\card -> not (card == currentFlashcard))
-        |> List.head
+next : Int -> Dict Int Flashcard -> Int
+next currentFlashcardIndex flashcards =
+    if currentFlashcardIndex == (Dict.size flashcards - 1) then
+        0
+
+    else
+        currentFlashcardIndex + 1
+
+
+previous : Int -> Dict Int Flashcard -> Int
+previous currentFlashcardIndex flashcards =
+    if currentFlashcardIndex == 0 then
+        Dict.size flashcards - 1
+
+    else
+        currentFlashcardIndex - 1
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
-        NoFlashCards ->
+        NoFlashcardsToShow ->
             ( model, Cmd.none )
 
-        ShowingFlashcard flashcardPart currentFlashcard flashcards mode ->
+        ShowingFlashcard details ->
             case msg of
                 ShowPrevious ->
-                    -- todo
-                    ( model, Cmd.none )
+                    ( ShowingFlashcard { details | currentFlashcardIndex = previous details.currentFlashcardIndex details.flashcards }
+                    , Cmd.none
+                    )
 
                 ShowNext ->
-                    case mode of
-                        Shuffle ->
-                            ( ShowingFlashcard Word currentFlashcard flashcards mode
-                            , Random.generate DisplayRandomFlashcard (shuffle flashcards)
-                            )
+                    ( ShowingFlashcard { details | currentFlashcardIndex = next details.currentFlashcardIndex details.flashcards }
+                    , Cmd.none
+                    )
 
-                        MostRecent ->
-                            -- todo: most recent functionality
-                            ( ShowingFlashcard Word currentFlashcard flashcards mode
+                CreatedRandomDeck shuffledIndexes ->
+                    let
+                        shuffledFlashcards =
+                            shuffledIndexes
+                                |> List.filterMap
+                                    (\i ->
+                                        details.flashcards |> Dict.get i
+                                    )
+                                |> List.indexedMap (\i f -> ( i, f ))
+                                |> Dict.fromList
+                    in
+                    ( ShowingFlashcard
+                        { details
+                            | flashcardPart = Word
+                            , flashcards = shuffledFlashcards
+                        }
+                    , Cmd.none
+                    )
+
+                ToggleFlashcard ->
+                    case details.flashcardPart of
+                        Word ->
+                            ( ShowingFlashcard { details | flashcardPart = Definition }
                             , Cmd.none
                             )
 
-                DisplayRandomFlashcard shuffledFlashcards ->
-                    case nextFlashcard currentFlashcard flashcards of
-                        Nothing ->
-                            case List.head flashcards of
-                                Nothing ->
-                                    ( NoFlashCards, Cmd.none )
-
-                                Just _ ->
-                                    ( ShowingFlashcard Word currentFlashcard shuffledFlashcards mode, Cmd.none )
-
-                        Just flashcard ->
-                            ( ShowingFlashcard Word flashcard shuffledFlashcards mode, Cmd.none )
-
-                ToggleFlashcard ->
-                    case flashcardPart of
-                        Word ->
-                            ( ShowingFlashcard Definition currentFlashcard flashcards mode, Cmd.none )
-
                         Definition ->
-                            ( ShowingFlashcard Word currentFlashcard flashcards mode, Cmd.none )
+                            ( ShowingFlashcard { details | flashcardPart = Word }
+                            , Cmd.none
+                            )
 
                 ChangeMode newMode ->
-                    ( ShowingFlashcard flashcardPart currentFlashcard flashcards newMode, Cmd.none )
+                    case newMode of
+                        Shuffle ->
+                            -- shuffle deck
+                            ( ShowingFlashcard { details | mode = newMode }
+                            , Random.generate CreatedRandomDeck
+                                (shuffle <| Dict.keys details.flashcards)
+                            )
+
+                        MostRecent ->
+                            let
+                                flashcardsOrderedByMostRecent =
+                                    details.flashcards
+                                        |> Dict.toList
+                                        |> List.sortBy
+                                            (\( _, { timeCreated } ) ->
+                                                posixToMillis timeCreated
+                                            )
+                                        |> List.map (\( _, f ) -> f)
+                                        |> List.indexedMap (\i f -> ( i, f ))
+                                        |> Dict.fromList
+                            in
+                            ( ShowingFlashcard
+                                { details
+                                    | mode = newMode
+                                    , flashcards = flashcardsOrderedByMostRecent
+                                }
+                            , Cmd.none
+                            )
 
 
 
 -- VIEW
 
 
-showingFlashcard : Maybe String -> List Flashcard -> Mode -> Element Msg
+showingFlashcard : Maybe String -> Dict Int Flashcard -> Mode -> Element Msg
 showingFlashcard wordOrDef flashcards mode =
     column
         [ width fill
@@ -135,12 +168,12 @@ showingFlashcard wordOrDef flashcards mode =
             , spacing 10
             , centerX
             ]
-            [ if List.length flashcards > 1 then
+            [ if Dict.size flashcards > 1 then
                 el [ centerX ] (previousButton <| Just ShowPrevious)
 
               else
                 el [ centerX ] <| previousButton Nothing
-            , if List.length flashcards > 1 then
+            , if Dict.size flashcards > 1 then
                 el [ centerX ] (nextButton <| Just ShowNext)
 
               else
@@ -158,15 +191,7 @@ showingFlashcard wordOrDef flashcards mode =
 view : Model -> Element Msg
 view model =
     case model of
-        ShowingFlashcard flashCardPart { word, definition } flashcards mode ->
-            case flashCardPart of
-                Word ->
-                    showingFlashcard word flashcards mode
-
-                Definition ->
-                    showingFlashcard definition flashcards mode
-
-        NoFlashCards ->
+        NoFlashcardsToShow ->
             column
                 [ width fill
                 , centerX
@@ -175,3 +200,20 @@ view model =
                 ]
                 [ heading "No Flash Cards Remain - Add one by clicking the pencil icon!"
                 ]
+
+        ShowingFlashcard { flashcardPart, currentFlashcardIndex, flashcards, mode } ->
+            case Flashcard.fromIndex currentFlashcardIndex flashcards of
+                Nothing ->
+                    column
+                        [ Element.alignTop
+                        , width fill
+                        ]
+                        [ errorMessage "Something has gone wrong. Flashcard does not exist." ]
+
+                Just { word, definition } ->
+                    case flashcardPart of
+                        Word ->
+                            showingFlashcard word flashcards mode
+
+                        Definition ->
+                            showingFlashcard definition flashcards mode
