@@ -2,10 +2,7 @@ module Page.ManageFlashcards exposing (Model, Msg, initialModel, update, view)
 
 import Api exposing (httpError, saveFlashcardRequest)
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, column, el, fill, padding, paddingXY, spacing, text, width)
-import Element.Background as Background
-import Element.Border as Border
-import Element.Font as Font
+import Element exposing (Element, centerX, column, el, fill, padding, paddingXY, paragraph, spacing, text, width)
 import ElementLibrary.Elements exposing (Message, buttonImage, heading, searchField)
 import ElementLibrary.Helpers exposing (MessageType(..))
 import Flashcard as Flashcard exposing (Flashcard)
@@ -28,14 +25,12 @@ type State
     = FlashcardsExist
         { searchString : String
         , flashcards : Dict Int Flashcard
-        , pageNumber : Int
         }
     | NoFlashcards
     | AddingAFlashcard
         (Maybe
             { searchString : String
             , flashcards : Dict Int Flashcard
-            , pageNumber : Int
             }
         )
         { word : String
@@ -58,7 +53,6 @@ initialModel idToken =
 type Msg
     = UpdateSearchField String
     | Search
-    | ChangePage Int
     | Add
     | Save
     | UpdateWord String
@@ -66,6 +60,7 @@ type Msg
     | CancelAdd
     | FlashcardSaved (Result Http.Error Flashcard)
     | GotTimeNow Posix
+    | EditFlashcard
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -87,9 +82,6 @@ updateState msg { state, idToken } =
 
                 Search ->
                     ( FlashcardsExist { details | searchString = "Search activated!" }, Cmd.none )
-
-                ChangePage pageNumber ->
-                    ( FlashcardsExist { details | pageNumber = pageNumber }, Cmd.none )
 
                 Add ->
                     ( AddingAFlashcard (Just details) { word = "", definition = "" } Nothing, Cmd.none )
@@ -136,7 +128,6 @@ updateState msg { state, idToken } =
                                 Nothing ->
                                     { flashcards = Flashcard.add Nothing newFlashcard
                                     , searchString = ""
-                                    , pageNumber = 1
                                     }
                     in
                     ( AddingAFlashcard
@@ -169,17 +160,6 @@ updateState msg { state, idToken } =
 -- VIEW
 
 
-numberOfItemsPerPage : Int
-numberOfItemsPerPage =
-    10
-
-
-flashcardRow : Flashcard -> Element msg
-flashcardRow { word, definition, createdDateTime } =
-    --todo
-    text "Flashcard row"
-
-
 addFlashcardButton : Element Msg
 addFlashcardButton =
     el [ centerX ]
@@ -208,21 +188,38 @@ noFlashcardsDisplay =
 view : Model -> Element Msg
 view { state } =
     case state of
-        FlashcardsExist { searchString, flashcards, pageNumber } ->
+        FlashcardsExist { searchString, flashcards } ->
             column
                 [ width fill
                 , spacing 20
                 , padding 20
                 ]
-                [ el [ width fill, paddingXY 50 100 ] <|
+                [ el [ Element.alignTop, Element.alignLeft ] <| addFlashcardButton
+                , el [ width fill, paddingXY 50 100 ] <|
                     searchField
                         { messageOnChange = UpdateSearchField
                         , fieldValue = searchString
                         , onEnterMsg = Search
                         }
-                , addFlashcardButton
-
-                -- , flashcards
+                , column
+                    [ width fill
+                    , spacing 10
+                    ]
+                    (flashcards
+                        |> Dict.map
+                            (\_ { word, definition } ->
+                                ElementLibrary.Elements.flashcard
+                                    { isEditable = True
+                                    , onClickMsg = EditFlashcard
+                                    , label =
+                                        paragraph []
+                                            [ text <| "Word: " ++ word ++ ", "
+                                            , text <| "Definition: " ++ definition
+                                            ]
+                                    }
+                            )
+                        |> Dict.values
+                    )
                 ]
 
         NoFlashcards ->
@@ -236,76 +233,56 @@ view { state } =
                 message
 
 
-
--- todo: add this is the element library (overlay?)
-
-
 addingAFlashcardView : { word : String, definition : String } -> Maybe Message -> Element Msg
 addingAFlashcardView { word, definition } message =
     column
-        [ centerX
-        , Element.centerY
-        , padding 20
-        , spacing 10
-        , Background.color <| Element.rgb255 255 255 255
-        , Element.moveLeft 60
-        , Border.shadow
-            { color = Element.rgba255 0 0 0 0.2
-            , blur = 4
-            , offset = ( 0, 0 )
-            , size = 900
-            }
+        [ width fill
         ]
-        [ Element.row
-            [ Font.bold
-            , Font.size 16
-            , Border.widthEach
-                { bottom = 1
-                , right = 0
-                , top = 0
-                , left = 0
-                }
-            , Border.solid
-            , Border.color <| Element.rgb255 221 221 221
-            , width fill
-            , paddingXY 0 10
-            ]
-            [ case message of
-                Just { messageType, messageString } ->
-                    ElementLibrary.Elements.message
-                        { messageType = messageType
-                        , messageString = messageString
-                        }
-
-                Nothing ->
-                    text "Add a flashcard"
-            , el [ Element.alignRight, paddingXY 10 0 ]
-                (buttonImage
-                    { onClickMsg = Just CancelAdd
-                    , src = "./images/icons/cancel.svg"
-                    , description = "Cancel add"
-                    , specifiedImageHeight = Just 15
+        [ case message of
+            Just { messageType, messageString } ->
+                ElementLibrary.Elements.message
+                    { messageType = messageType
+                    , messageString = messageString
                     }
-                )
-            ]
-        , Element.row
-            [ Element.paddingXY 30 0
-            , spacing 20
-            ]
-            [ ElementLibrary.Elements.inputField
-                { fieldTitle = "Word"
-                , messageOnChange = UpdateWord
-                , fieldValue = word
-                }
-            , ElementLibrary.Elements.inputField
-                { fieldTitle = "Definition"
-                , messageOnChange = UpdateDefinition
-                , fieldValue = definition
-                }
-            ]
-        , if String.isEmpty word || String.isEmpty definition then
-            el [ padding 30 ] <| ElementLibrary.Elements.button "Save" Nothing
 
-          else
-            el [ padding 30 ] <| ElementLibrary.Elements.button "Save" <| Just Save
+            Nothing ->
+                Element.none
+        , column
+            [ width fill
+            , spacing 20
+            , padding 20
+            ]
+            [ Element.row [ width fill ]
+                [ buttonImage
+                    { onClickMsg = Just CancelAdd
+                    , src = "./images/icons/left-arrow.svg"
+                    , description = "Go Back"
+                    , specifiedImageHeight = Nothing
+                    }
+                , el
+                    [ width fill, centerX ]
+                  <|
+                    heading "Add a flashcard"
+                ]
+            , Element.row
+                [ spacing 20
+                , width fill
+                ]
+                [ ElementLibrary.Elements.inputField
+                    { fieldTitle = "Word"
+                    , messageOnChange = UpdateWord
+                    , fieldValue = word
+                    }
+                , ElementLibrary.Elements.multilineInputField
+                    { fieldTitle = "Definition"
+                    , messageOnChange = UpdateDefinition
+                    , fieldValue = definition
+                    }
+                ]
+            , if String.isEmpty word || String.isEmpty definition then
+                ElementLibrary.Elements.button "Save" Nothing
+
+              else
+                ElementLibrary.Elements.button "Save" <| Just Save
+            ]
         ]

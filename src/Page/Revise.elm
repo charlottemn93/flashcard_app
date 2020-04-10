@@ -1,7 +1,7 @@
 module Page.Revise exposing (Model, Msg, initialModel, update, view)
 
 import Dict exposing (Dict)
-import Element exposing (Element, centerX, column, el, fill, padding, row, spacing, width)
+import Element exposing (Element, centerX, column, el, fill, padding, paragraph, row, spacing, text, width)
 import ElementLibrary.Elements exposing (buttonImage, flashcard, heading, message, shuffleButton)
 import ElementLibrary.Helpers exposing (MessageType(..))
 import Flashcard as Flashcard exposing (Flashcard)
@@ -131,7 +131,11 @@ showingFlashcard wordOrDef flashcards mode =
         , padding 20
         ]
         [ heading "Flash 'em - the flash card app"
-        , flashcard ToggleFlashcard wordOrDef
+        , flashcard
+            { onClickMsg = ToggleFlashcard
+            , isEditable = False
+            , label = paragraph [] [ text wordOrDef ]
+            }
         , row
             [ width fill
             , spacing 10

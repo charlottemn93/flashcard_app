@@ -229,7 +229,7 @@ view { state, environment } =
                     el
                         [ paddingEach
                             { edges
-                                | top = 100
+                                | top = 50
                             }
                         , width fill
                         ]
