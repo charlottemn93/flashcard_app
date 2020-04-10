@@ -1,19 +1,30 @@
 module Page.ManageFlashcards exposing (Model, Msg, initialModel, update, view)
 
+import Api exposing (httpError, saveFlashcardRequest)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, padding, paddingXY, spacing, text, width)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
-import ElementLibrary.Elements exposing (buttonImage, heading, paginatedContainer, searchField)
-import Flashcard exposing (Flashcard)
+import ElementLibrary.Elements exposing (Message, buttonImage, heading, searchField)
+import ElementLibrary.Helpers exposing (MessageType(..))
+import Flashcard as Flashcard exposing (Flashcard)
+import Http as Http
+import Task
+import Time as Time exposing (Posix)
 
 
 
 -- MODEL
 
 
-type Model
+type alias Model =
+    { idToken : String
+    , state : State
+    }
+
+
+type State
     = FlashcardsExist
         { searchString : String
         , flashcards : Dict Int Flashcard
@@ -21,14 +32,23 @@ type Model
         }
     | NoFlashcards
     | AddingAFlashcard
+        (Maybe
+            { searchString : String
+            , flashcards : Dict Int Flashcard
+            , pageNumber : Int
+            }
+        )
         { word : String
         , definition : String
         }
+        (Maybe Message)
 
 
-initialModel : Model
-initialModel =
-    NoFlashcards
+initialModel : String -> Model
+initialModel idToken =
+    { idToken = idToken
+    , state = NoFlashcards
+    }
 
 
 
@@ -44,11 +64,22 @@ type Msg
     | UpdateWord String
     | UpdateDefinition String
     | CancelAdd
+    | FlashcardSaved (Result Http.Error Flashcard)
+    | GotTimeNow Posix
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model of
+    let
+        ( state, command ) =
+            updateState msg model
+    in
+    ( { model | state = state }, command )
+
+
+updateState : Msg -> Model -> ( State, Cmd Msg )
+updateState msg { state, idToken } =
+    case state of
         FlashcardsExist details ->
             case msg of
                 UpdateSearchField str ->
@@ -61,37 +92,77 @@ update msg model =
                     ( FlashcardsExist { details | pageNumber = pageNumber }, Cmd.none )
 
                 Add ->
-                    ( AddingAFlashcard { word = "", definition = "" }, Cmd.none )
+                    ( AddingAFlashcard (Just details) { word = "", definition = "" } Nothing, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( state, Cmd.none )
 
         NoFlashcards ->
             case msg of
                 Add ->
-                    ( AddingAFlashcard { word = "", definition = "" }, Cmd.none )
+                    ( AddingAFlashcard Nothing { word = "", definition = "" } Nothing, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( state, Cmd.none )
 
-        AddingAFlashcard details ->
+        AddingAFlashcard searchDetails details message ->
             case msg of
                 Save ->
-                    -- todo: http request
-                    ( model, Cmd.none )
+                    ( state, Task.perform GotTimeNow Time.now )
+
+                GotTimeNow posix ->
+                    ( state
+                    , saveFlashcardRequest
+                        { posix = posix
+                        , word = details.word
+                        , definition = details.definition
+                        , idToken = idToken
+                        , expectMsg = FlashcardSaved
+                        }
+                    )
+
+                FlashcardSaved (Err e) ->
+                    ( AddingAFlashcard searchDetails details <| Just { messageType = Error, messageString = httpError e }, Cmd.none )
+
+                FlashcardSaved (Ok newFlashcard) ->
+                    let
+                        updatedSearchDetails =
+                            case searchDetails of
+                                Just x ->
+                                    { x
+                                        | flashcards = Flashcard.add (Just x.flashcards) newFlashcard
+                                    }
+
+                                Nothing ->
+                                    { flashcards = Flashcard.add Nothing newFlashcard
+                                    , searchString = ""
+                                    , pageNumber = 1
+                                    }
+                    in
+                    ( AddingAFlashcard
+                        (Just updatedSearchDetails)
+                        { details | word = "", definition = "" }
+                      <|
+                        Just { messageType = Successful, messageString = "Flashcard saved" }
+                    , Cmd.none
+                    )
 
                 CancelAdd ->
-                    -- todo: go back to the state before - actually need this to act like an overlay
-                    ( model, Cmd.none )
+                    case searchDetails of
+                        Nothing ->
+                            ( NoFlashcards, Cmd.none )
+
+                        Just x ->
+                            ( FlashcardsExist x, Cmd.none )
 
                 UpdateWord word ->
-                    ( AddingAFlashcard { details | word = word }, Cmd.none )
+                    ( AddingAFlashcard searchDetails { details | word = word } message, Cmd.none )
 
                 UpdateDefinition definition ->
-                    ( AddingAFlashcard { details | definition = definition }, Cmd.none )
+                    ( AddingAFlashcard searchDetails { details | definition = definition } message, Cmd.none )
 
                 _ ->
-                    ( model, Cmd.none )
+                    ( state, Cmd.none )
 
 
 
@@ -135,8 +206,8 @@ noFlashcardsDisplay =
 
 
 view : Model -> Element Msg
-view model =
-    case model of
+view { state } =
+    case state of
         FlashcardsExist { searchString, flashcards, pageNumber } ->
             column
                 [ width fill
@@ -150,33 +221,27 @@ view model =
                         , onEnterMsg = Search
                         }
                 , addFlashcardButton
-                , paginatedContainer
-                    { items =
-                        flashcards
-                            |> Dict.values
-                            |> List.map (\card -> flashcardRow card)
-                    , numberOfItemsPerPage = numberOfItemsPerPage
-                    , currentPage = pageNumber
-                    , changePageMessage = ChangePage
-                    }
+
+                -- , flashcards
                 ]
 
         NoFlashcards ->
             noFlashcardsDisplay
 
-        AddingAFlashcard { word, definition } ->
+        AddingAFlashcard _ { word, definition } message ->
             addingAFlashcardView
                 { word = word
                 , definition = definition
                 }
+                message
 
 
 
 -- todo: add this is the element library (overlay?)
 
 
-addingAFlashcardView : { word : String, definition : String } -> Element Msg
-addingAFlashcardView { word, definition } =
+addingAFlashcardView : { word : String, definition : String } -> Maybe Message -> Element Msg
+addingAFlashcardView { word, definition } message =
     column
         [ centerX
         , Element.centerY
@@ -205,8 +270,16 @@ addingAFlashcardView { word, definition } =
             , width fill
             , paddingXY 0 10
             ]
-            [ text "Add a flashcard"
-            , el [ Element.alignRight ]
+            [ case message of
+                Just { messageType, messageString } ->
+                    ElementLibrary.Elements.message
+                        { messageType = messageType
+                        , messageString = messageString
+                        }
+
+                Nothing ->
+                    text "Add a flashcard"
+            , el [ Element.alignRight, paddingXY 10 0 ]
                 (buttonImage
                     { onClickMsg = Just CancelAdd
                     , src = "./images/icons/cancel.svg"

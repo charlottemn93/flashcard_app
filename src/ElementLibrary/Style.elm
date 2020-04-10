@@ -1,10 +1,8 @@
 module ElementLibrary.Style exposing
-    ( MessageType(..)
-    , activeToolbarItem
+    ( activeToolbarItem
     , button
     , buttonImage
     , dangerText
-    , edges
     , errorMessage
     , flashcard
     , heading
@@ -55,22 +53,13 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input exposing (Label, labelAbove)
 import Element.Region as Region
+import ElementLibrary.Helpers exposing (edges)
 import Html.Events
 import Json.Decode as Decode
 
 
 
 -- HELPERS
-
-
-edges : { top : Int, bottom : Int, left : Int, right : Int }
-edges =
-    -- use this for things like Element.paddingEach - override the edges that you need like { edges | bottom = 20 }
-    { top = 0
-    , bottom = 0
-    , left = 0
-    , right = 0
-    }
 
 
 defaultImageHeight : Int
@@ -139,12 +128,6 @@ dangerText =
         ]
     , Font.color <| rgb255 169 68 66
     ]
-
-
-type MessageType
-    = Error
-    | Info
-    | Successful
 
 
 messageStyles : List (Attribute msg)

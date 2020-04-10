@@ -1,8 +1,8 @@
 module Page.Login exposing (Model, Msg, initialModel, subscriptions, update, view)
 
 import Element exposing (Element, alignTop, centerX, centerY, column, el, fill, height, padding, paddingEach, row, spacing, width)
-import ElementLibrary.Elements exposing (button, errorMessage, heading, inputField, passwordInputField, successfulMessage)
-import ElementLibrary.Style exposing (edges)
+import ElementLibrary.Elements exposing (Message, button, heading, inputField, message, passwordInputField)
+import ElementLibrary.Helpers exposing (MessageType(..), edges)
 import Json.Decode as Decode
 import Ports.Login exposing (attemptLogIn, logInFailed, signup, signupFailed, signupSuccess, verificationFailed, verificationSuccessful, verifyAccount)
 
@@ -22,17 +22,6 @@ type alias SignupDetails =
     , emailAddress : String
     , password : String
     , passwordConfirmation : String
-    }
-
-
-type MessageType
-    = Success
-    | Error
-
-
-type alias Message =
-    { messageType : MessageType
-    , messageString : String
     }
 
 
@@ -230,7 +219,7 @@ update msg model =
                       <|
                         Just
                             { messageString = "Verification successful! Please log in."
-                            , messageType = Success
+                            , messageType = Successful
                             }
                     , Cmd.none
                     )
@@ -332,12 +321,10 @@ view model =
 
                 Just { messageString, messageType } ->
                     column [ width fill ]
-                        [ case messageType of
-                            Error ->
-                                errorMessage messageString
-
-                            Success ->
-                                successfulMessage messageString
+                        [ message
+                            { messageType = messageType
+                            , messageString = messageString
+                            }
                         , loginOptionsView logInDetails signupDetails
                         ]
 
@@ -348,13 +335,19 @@ view model =
                         Element.none
 
                     Just str ->
-                        errorMessage str
+                        message
+                            { messageType = Error
+                            , messageString = str
+                            }
                 , column
                     [ width fill
                     , padding 20
                     , spacing 10
                     ]
-                    [ successfulMessage "Sign up successful! A verification code will be sent to your email address in a few minutes."
+                    [ message
+                        { messageType = Successful
+                        , messageString = "Sign up successful! A verification code will be sent to your email address in a few minutes."
+                        }
                     , inputField
                         { fieldTitle = "Verification code"
                         , messageOnChange = \str -> UpdateField <| VerificationCode str

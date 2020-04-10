@@ -4,7 +4,7 @@ import Browser exposing (Document, UrlRequest(..))
 import Browser.Navigation as Nav
 import Credentials exposing (Credentials, credentialsDecoder)
 import Element exposing (Element, el, fill, paddingEach, text, width)
-import ElementLibrary.Style exposing (edges)
+import ElementLibrary.Helpers exposing (edges)
 import Environment as Env exposing (Environment)
 import Json.Decode as Decode
 import Page.Login as LoginPage
@@ -71,7 +71,7 @@ update msg model =
                 LogInSuccessful (Ok cred) ->
                     ( { model
                         | cred = Just cred
-                        , state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel
+                        , state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel cred.idToken
                       }
                     , Cmd.none
                     )
@@ -100,7 +100,7 @@ update msg model =
                     , Cmd.none
                     )
 
-        Just _ ->
+        Just { idToken } ->
             case msg of
                 ActivatedLink urlRequest ->
                     case urlRequest of
@@ -117,7 +117,7 @@ update msg model =
                     in
                     case route of
                         ManageFlashcards ->
-                            ( { model | state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel }
+                            ( { model | state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel idToken }
                             , Cmd.none
                             )
 
@@ -295,10 +295,10 @@ init { idToken, accessToken, environment } url key =
                 Nothing ->
                     ( ViewingLogin LoginPage.initialModel, Cmd.none )
 
-                Just _ ->
+                Just c ->
                     case routeFromUrl url of
                         ManageFlashcards ->
-                            ( ViewingManageFlashcards <| ManageFlashcardsPage.initialModel, Cmd.none )
+                            ( ViewingManageFlashcards <| ManageFlashcardsPage.initialModel c.idToken, Cmd.none )
 
                         Revise ->
                             ( ViewingRevise <| RevisePage.initialModel, Cmd.none )

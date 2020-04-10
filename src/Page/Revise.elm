@@ -2,12 +2,11 @@ module Page.Revise exposing (Model, Msg, initialModel, update, view)
 
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, padding, row, spacing, width)
-import ElementLibrary.Elements exposing (buttonImage, errorMessage, flashcard, heading, shuffleButton)
+import ElementLibrary.Elements exposing (buttonImage, flashcard, heading, message, shuffleButton)
+import ElementLibrary.Helpers exposing (MessageType(..))
 import Flashcard as Flashcard exposing (Flashcard)
-import Random exposing (Generator)
+import Random
 import Random.List exposing (shuffle)
-import Task
-import Time exposing (posixToMillis)
 
 
 
@@ -51,24 +50,6 @@ type Msg
     | ChangeMode Mode
 
 
-next : Int -> Dict Int Flashcard -> Int
-next currentFlashcardIndex flashcards =
-    if currentFlashcardIndex == (Dict.size flashcards - 1) then
-        0
-
-    else
-        currentFlashcardIndex + 1
-
-
-previous : Int -> Dict Int Flashcard -> Int
-previous currentFlashcardIndex flashcards =
-    if currentFlashcardIndex == 0 then
-        Dict.size flashcards - 1
-
-    else
-        currentFlashcardIndex - 1
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
@@ -78,12 +59,12 @@ update msg model =
         ShowingFlashcard details ->
             case msg of
                 ShowPrevious ->
-                    ( ShowingFlashcard { details | currentFlashcardIndex = previous details.currentFlashcardIndex details.flashcards }
+                    ( ShowingFlashcard { details | currentFlashcardIndex = Flashcard.previous details.currentFlashcardIndex details.flashcards }
                     , Cmd.none
                     )
 
                 ShowNext ->
-                    ( ShowingFlashcard { details | currentFlashcardIndex = next details.currentFlashcardIndex details.flashcards }
+                    ( ShowingFlashcard { details | currentFlashcardIndex = Flashcard.next details.currentFlashcardIndex details.flashcards }
                     , Cmd.none
                     )
 
@@ -128,22 +109,10 @@ update msg model =
                             )
 
                         MostRecent ->
-                            let
-                                flashcardsOrderedByMostRecent =
-                                    details.flashcards
-                                        |> Dict.toList
-                                        |> List.sortBy
-                                            (\( _, { createdDateTime } ) ->
-                                                posixToMillis createdDateTime
-                                            )
-                                        |> List.map (\( _, f ) -> f)
-                                        |> List.indexedMap (\i f -> ( i, f ))
-                                        |> Dict.fromList
-                            in
                             ( ShowingFlashcard
                                 { details
                                     | mode = newMode
-                                    , flashcards = flashcardsOrderedByMostRecent
+                                    , flashcards = Flashcard.orderByMostRecent details.flashcards
                                 }
                             , Cmd.none
                             )
@@ -153,7 +122,7 @@ update msg model =
 -- VIEW
 
 
-showingFlashcard : Maybe String -> Dict Int Flashcard -> Mode -> Element Msg
+showingFlashcard : String -> Dict Int Flashcard -> Mode -> Element Msg
 showingFlashcard wordOrDef flashcards mode =
     column
         [ width fill
@@ -162,7 +131,7 @@ showingFlashcard wordOrDef flashcards mode =
         , padding 20
         ]
         [ heading "Flash 'em - the flash card app"
-        , flashcard ToggleFlashcard <| Maybe.withDefault "" wordOrDef
+        , flashcard ToggleFlashcard wordOrDef
         , row
             [ width fill
             , spacing 10
@@ -224,7 +193,11 @@ view model =
                         [ Element.alignTop
                         , width fill
                         ]
-                        [ errorMessage "Something has gone wrong. Flashcard does not exist." ]
+                        [ message
+                            { messageString = "Something has gone wrong. Flashcard does not exist."
+                            , messageType = Error
+                            }
+                        ]
 
                 Just { word, definition } ->
                     case flashcardPart of

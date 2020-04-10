@@ -1,17 +1,16 @@
 module ElementLibrary.Elements exposing
-    ( button
+    ( Message
+    , button
     , buttonImage
-    , errorMessage
     , flashcard
     , heading
-    , infoMessage
     , infoRow
     , inputField
+    , message
     , paginatedContainer
     , passwordInputField
     , searchField
     , shuffleButton
-    , successfulMessage
     )
 
 import Element
@@ -37,30 +36,22 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Element.Region as Region
-import ElementLibrary.Style as Style exposing (MessageType(..), edges)
+import ElementLibrary.Helpers exposing (MessageType(..), edges)
+import ElementLibrary.Style as Style
 
 
 
 -- DISPLAY ONLY
 
 
-errorMessage : String -> Element msg
-errorMessage messageStr =
-    message Error messageStr
+type alias Message =
+    { messageType : MessageType
+    , messageString : String
+    }
 
 
-infoMessage : String -> Element msg
-infoMessage messageStr =
-    message Info messageStr
-
-
-successfulMessage : String -> Element msg
-successfulMessage messageStr =
-    message Successful messageStr
-
-
-message : MessageType -> String -> Element msg
-message messageType messageStr =
+message : Message -> Element msg
+message { messageType, messageString } =
     el
         (case messageType of
             Error ->
@@ -73,7 +64,7 @@ message messageType messageStr =
                 Style.successfulMessage
         )
     <|
-        paragraph [ width fill ] [ text messageStr ]
+        paragraph [ width fill ] [ text messageString ]
 
 
 
