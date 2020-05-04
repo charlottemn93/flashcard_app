@@ -2,6 +2,7 @@ module ElementLibrary.Style exposing
     ( activeToolbarItem
     , button
     , buttonImage
+    , dangerButton
     , dangerText
     , errorMessage
     , flashcard
@@ -226,6 +227,25 @@ button disabled =
 
       else
         Background.color <| rgb255 51 122 183
+    ]
+
+
+dangerButton : Bool -> List (Attribute msg)
+dangerButton disabled =
+    [ Font.color <| rgb255 255 255 255
+    , Font.size 14
+    , padding 10
+    , Border.shadow
+        { blur = 3
+        , color = rgba255 0 0 0 0.2
+        , offset = ( 0, 1 )
+        , size = 1
+        }
+    , if disabled == True then
+        Background.color <| rgba255 217 83 79 0.4
+
+      else
+        Background.color <| rgb255 217 83 79
     ]
 
 

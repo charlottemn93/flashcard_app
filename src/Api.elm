@@ -1,8 +1,9 @@
-module Api exposing (editFlashcardRequest, httpError, loadFlashcardsRequest, saveFlashcardRequest)
+module Api exposing (deleteFlashcardRequest, editFlashcardRequest, httpError, loadFlashcardsRequest, saveFlashcardRequest)
 
 import Flashcard exposing (Flashcard, flashcardDecoder, flashcardsDecoder)
 import Http as Http exposing (Error(..))
-import HttpBuilder exposing (get, post, request, withExpect, withHeaders, withJsonBody)
+import HttpBuilder exposing (delete, get, post, request, withExpect, withHeaders, withJsonBody)
+import Json.Decode as Decode
 import Json.Encode as Encode
 import Time exposing (Posix, posixToMillis)
 
@@ -58,7 +59,7 @@ editFlashcardRequest { id, word, definition, idToken, posix, expectMsg } =
                     [ ( "createdDateTime", Encode.int <| posixToMillis posix )
                     , ( "word", Encode.string word )
                     , ( "definition", Encode.string definition )
-                    , ( "flashcardId", Encode.string id )
+                    , ( "flashCardId", Encode.string id )
                     ]
                 )
             |> withExpect (Http.expectJson expectMsg flashcardDecoder)
@@ -72,4 +73,14 @@ loadFlashcardsRequest { idToken, expectMsg } =
             |> withHeaders
                 [ ( "Authorization", idToken ) ]
             |> withExpect (Http.expectJson expectMsg flashcardsDecoder)
+        )
+
+
+deleteFlashcardRequest : { idToken : String, id : String, expectMsg : Result Http.Error String -> msg } -> Cmd msg
+deleteFlashcardRequest { idToken, id, expectMsg } =
+    request
+        (delete ("https://unq1uv1ab5.execute-api.eu-west-2.amazonaws.com/prod/flashcard/" ++ id)
+            |> withHeaders
+                [ ( "Authorization", idToken ) ]
+            |> withExpect (Http.expectJson expectMsg Decode.string)
         )

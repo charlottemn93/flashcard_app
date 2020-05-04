@@ -2,6 +2,7 @@ module ElementLibrary.Elements exposing
     ( Message
     , button
     , buttonImage
+    , dangerButton
     , editingFlashcard
     , flashcard
     , heading
@@ -173,6 +174,21 @@ button str onClickMsg =
 
             Just _ ->
                 Style.button False
+        )
+        { onPress = onClickMsg
+        , label = text str
+        }
+
+
+dangerButton : String -> Maybe msg -> Element msg
+dangerButton str onClickMsg =
+    Input.button
+        (case onClickMsg of
+            Nothing ->
+                Style.dangerButton True
+
+            Just _ ->
+                Style.dangerButton False
         )
         { onPress = onClickMsg
         , label = text str
