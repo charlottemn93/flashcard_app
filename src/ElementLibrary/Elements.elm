@@ -2,6 +2,7 @@ module ElementLibrary.Elements exposing
     ( Message
     , button
     , buttonImage
+    , editingFlashcard
     , flashcard
     , heading
     , inputField
@@ -181,7 +182,49 @@ button str onClickMsg =
 flashcard : { onClickMsg : msg, isEditable : Bool, label : Element msg } -> Element msg
 flashcard { onClickMsg, isEditable, label } =
     Input.button
-        Style.flashcard
+        (Style.flashcard isEditable)
         { onPress = Just onClickMsg
-        , label = label
+        , label =
+            if isEditable then
+                column [ width fill ]
+                    [ el
+                        [ Element.alignTop
+                        , Element.alignRight
+                        ]
+                      <|
+                        Element.image (Style.image <| Just 20)
+                            { src = "./images/icons/pencil.svg"
+                            , description = "Edit"
+                            }
+                    , label
+                    ]
+
+            else
+                label
+        }
+
+
+editingFlashcard : { onClickMsg : msg, onUpdateWordMsg : String -> msg, onUpdateDefinitionMsg : String -> msg, word : String, definition : String } -> Element msg
+editingFlashcard { onClickMsg, onUpdateWordMsg, onUpdateDefinitionMsg, word, definition } =
+    flashcard
+        { isEditable = True
+        , onClickMsg = onClickMsg
+        , label =
+            Element.row []
+                [ Input.text Style.flashcardNoPadding
+                    { onChange = onUpdateWordMsg
+                    , text = word
+                    , placeholder = Nothing
+                    , label =
+                        Input.labelLeft Style.flashcardNoPadding <| Element.text "Word: "
+                    }
+                , Input.multiline Style.flashcardNoPadding
+                    { onChange = onUpdateDefinitionMsg
+                    , text = definition
+                    , placeholder = Nothing
+                    , label =
+                        Input.labelLeft Style.flashcardNoPadding <| Element.text "Definition: "
+                    , spellcheck = False
+                    }
+                ]
         }

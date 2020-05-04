@@ -1,24 +1,32 @@
-module Flashcard exposing (Flashcard, add, flashcardDecoder, fromIndex, next, orderByMostRecent, previous)
+module Flashcard exposing (Flashcard, add, flashcardDecoder, flashcardsDecoder, fromIndex, fromList, next, orderByMostRecent, previous)
 
 import Dict exposing (Dict)
-import Json.Decode as Decode exposing (Decoder, int, string)
+import Json.Decode as Decode exposing (Decoder, int, list, string)
 import Time exposing (Posix, millisToPosix, posixToMillis)
 
 
 type alias Flashcard =
-    { word : String
+    { id : String
+    , word : String
     , definition : String
     , createdDateTime : Posix
     }
 
 
 
--- if firstIndex changes, the logic for next and previous will also need to change
+-- if firstIndex changes, the logic for next, previous and fromList will also need to change
 
 
 firstIndex : Int
 firstIndex =
     1
+
+
+fromList : List Flashcard -> Dict Int Flashcard
+fromList flashcards =
+    flashcards
+        |> List.indexedMap (\i f -> ( i + 1, f ))
+        |> Dict.fromList
 
 
 next : Int -> Dict Int Flashcard -> Int
@@ -83,7 +91,13 @@ posixDecoder =
 
 flashcardDecoder : Decoder Flashcard
 flashcardDecoder =
-    Decode.map3 Flashcard
+    Decode.map4 Flashcard
+        (Decode.field "flashCardId" string)
         (Decode.field "word" string)
         (Decode.field "definition" string)
         (Decode.field "createdDateTime" posixDecoder)
+
+
+flashcardsDecoder : Decoder (List Flashcard)
+flashcardsDecoder =
+    list flashcardDecoder

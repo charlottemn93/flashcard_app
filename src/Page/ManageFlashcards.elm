@@ -1,6 +1,6 @@
 module Page.ManageFlashcards exposing (Model, Msg, initialModel, update, view)
 
-import Api exposing (httpError, saveFlashcardRequest)
+import Api exposing (editFlashcardRequest, httpError, loadFlashcardsRequest, saveFlashcardRequest)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, padding, paddingXY, paragraph, spacing, text, width)
 import ElementLibrary.Elements exposing (Message, buttonImage, heading, searchField)
@@ -26,7 +26,14 @@ type State
         { searchString : String
         , flashcards : Dict Int Flashcard
         }
-    | NoFlashcards
+    | EditingFlashcard
+        Int
+        { searchString : String
+        , flashcards : Dict Int Flashcard
+        , word : String
+        , definition : String
+        }
+    | NoFlashcards String
     | AddingAFlashcard
         (Maybe
             { searchString : String
@@ -39,11 +46,16 @@ type State
         (Maybe Message)
 
 
-initialModel : String -> Model
+initialModel : String -> ( Model, Cmd Msg )
 initialModel idToken =
-    { idToken = idToken
-    , state = NoFlashcards
-    }
+    ( { idToken = idToken
+      , state = NoFlashcards ""
+      }
+    , loadFlashcardsRequest
+        { idToken = idToken
+        , expectMsg = LoadFlashcards
+        }
+    )
 
 
 
@@ -60,7 +72,9 @@ type Msg
     | CancelAdd
     | FlashcardSaved (Result Http.Error Flashcard)
     | GotTimeNow Posix
-    | EditFlashcard
+    | EditFlashcard Int
+    | SaveEdits
+    | LoadFlashcards (Result Http.Error (List Flashcard))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -86,13 +100,81 @@ updateState msg { state, idToken } =
                 Add ->
                     ( AddingAFlashcard (Just details) { word = "", definition = "" } Nothing, Cmd.none )
 
+                EditFlashcard index ->
+                    case
+                        Flashcard.fromIndex index details.flashcards
+                    of
+                        Nothing ->
+                            -- should not happen
+                            ( state, Cmd.none )
+
+                        Just { word, definition } ->
+                            ( EditingFlashcard index
+                                { flashcards = details.flashcards
+                                , searchString = details.searchString
+                                , word = word
+                                , definition = definition
+                                }
+                            , Cmd.none
+                            )
+
                 _ ->
                     ( state, Cmd.none )
 
-        NoFlashcards ->
+        EditingFlashcard index details ->
+            case msg of
+                UpdateWord word ->
+                    ( EditingFlashcard index { details | word = word }, Cmd.none )
+
+                UpdateDefinition definition ->
+                    ( EditingFlashcard index { details | definition = definition }, Cmd.none )
+
+                SaveEdits ->
+                    ( state, Task.perform GotTimeNow Time.now )
+
+                GotTimeNow posix ->
+                    case Flashcard.fromIndex index details.flashcards of
+                        Just { id } ->
+                            ( state
+                            , editFlashcardRequest
+                                { definition = details.definition
+                                , word = details.word
+                                , id = id
+                                , idToken = idToken
+                                , posix = posix
+                                , expectMsg = FlashcardSaved
+                                }
+                            )
+
+                        Nothing ->
+                            ( state
+                            , saveFlashcardRequest
+                                { definition = details.definition
+                                , word = details.word
+                                , idToken = idToken
+                                , posix = posix
+                                , expectMsg = FlashcardSaved
+                                }
+                            )
+
+                _ ->
+                    ( state, Cmd.none )
+
+        NoFlashcards _ ->
             case msg of
                 Add ->
                     ( AddingAFlashcard Nothing { word = "", definition = "" } Nothing, Cmd.none )
+
+                LoadFlashcards (Ok flashcards) ->
+                    ( FlashcardsExist
+                        { searchString = ""
+                        , flashcards = Flashcard.fromList flashcards
+                        }
+                    , Cmd.none
+                    )
+
+                LoadFlashcards (Err e) ->
+                    ( NoFlashcards <| httpError e, Cmd.none )
 
                 _ ->
                     ( state, Cmd.none )
@@ -141,7 +223,7 @@ updateState msg { state, idToken } =
                 CancelAdd ->
                     case searchDetails of
                         Nothing ->
-                            ( NoFlashcards, Cmd.none )
+                            ( NoFlashcards "", Cmd.none )
 
                         Just x ->
                             ( FlashcardsExist x, Cmd.none )
@@ -172,58 +254,113 @@ addFlashcardButton =
         )
 
 
-noFlashcardsDisplay : Element Msg
-noFlashcardsDisplay =
+noFlashcardsDisplay : String -> Element Msg
+noFlashcardsDisplay errorString =
     column
         [ width fill
         , spacing 20
         , padding 20
         , centerX
         ]
-        [ heading "No Flash cards exist - add one"
+        [ ElementLibrary.Elements.message
+            { messageType = Error
+            , messageString = errorString
+            }
+        , heading "No Flash cards exist - add one"
         , el [ centerX ] addFlashcardButton
         ]
+
+
+manageFlashcardsView : String -> List (Element Msg) -> Element Msg
+manageFlashcardsView searchString flashcardsContent =
+    column
+        [ width fill
+        , spacing 20
+        , padding 20
+        ]
+        [ el [ Element.alignTop, Element.alignLeft ] <| addFlashcardButton
+        , el [ width fill, paddingXY 50 100 ] <|
+            searchField
+                { messageOnChange = UpdateSearchField
+                , fieldValue = searchString
+                , onEnterMsg = Search
+                }
+        , column
+            [ width fill
+            , spacing 10
+            ]
+            flashcardsContent
+        ]
+
+
+editingFlashcardsContent : { flashcards : Dict Int Flashcard, selectedIndex : Int, word : String, definition : String } -> List (Element Msg)
+editingFlashcardsContent { flashcards, selectedIndex, word, definition } =
+    flashcards
+        |> Dict.map
+            (\index f ->
+                if index == selectedIndex then
+                    ElementLibrary.Elements.editingFlashcard
+                        { onClickMsg = SaveEdits
+                        , onUpdateWordMsg = UpdateWord
+                        , onUpdateDefinitionMsg = UpdateDefinition
+                        , word = word
+                        , definition = definition
+                        }
+
+                else
+                    ElementLibrary.Elements.flashcard
+                        { isEditable = True
+                        , onClickMsg = EditFlashcard index
+                        , label =
+                            paragraph []
+                                [ text <| "Word: " ++ f.word ++ ", "
+                                , text <| "Definition: " ++ f.definition
+                                ]
+                        }
+            )
+        |> Dict.values
+
+
+defaultFlashcardsContent : Dict Int Flashcard -> List (Element Msg)
+defaultFlashcardsContent flashcards =
+    flashcards
+        |> Dict.map
+            (\index { word, definition } ->
+                ElementLibrary.Elements.flashcard
+                    { isEditable = True
+                    , onClickMsg = EditFlashcard index
+                    , label =
+                        paragraph []
+                            [ text <| "Word: " ++ word ++ ", "
+                            , text <| "Definition: " ++ definition
+                            ]
+                    }
+            )
+        |> Dict.values
 
 
 view : Model -> Element Msg
 view { state } =
     case state of
-        FlashcardsExist { searchString, flashcards } ->
-            column
-                [ width fill
-                , spacing 20
-                , padding 20
-                ]
-                [ el [ Element.alignTop, Element.alignLeft ] <| addFlashcardButton
-                , el [ width fill, paddingXY 50 100 ] <|
-                    searchField
-                        { messageOnChange = UpdateSearchField
-                        , fieldValue = searchString
-                        , onEnterMsg = Search
-                        }
-                , column
-                    [ width fill
-                    , spacing 10
-                    ]
-                    (flashcards
-                        |> Dict.map
-                            (\_ { word, definition } ->
-                                ElementLibrary.Elements.flashcard
-                                    { isEditable = True
-                                    , onClickMsg = EditFlashcard
-                                    , label =
-                                        paragraph []
-                                            [ text <| "Word: " ++ word ++ ", "
-                                            , text <| "Definition: " ++ definition
-                                            ]
-                                    }
-                            )
-                        |> Dict.values
-                    )
-                ]
+        EditingFlashcard index { word, definition, searchString, flashcards } ->
+            case Flashcard.fromIndex index flashcards of
+                Nothing ->
+                    manageFlashcardsView searchString <| defaultFlashcardsContent flashcards
 
-        NoFlashcards ->
-            noFlashcardsDisplay
+                Just _ ->
+                    manageFlashcardsView searchString <|
+                        editingFlashcardsContent
+                            { flashcards = flashcards
+                            , selectedIndex = index
+                            , word = word
+                            , definition = definition
+                            }
+
+        FlashcardsExist { searchString, flashcards } ->
+            manageFlashcardsView searchString <| defaultFlashcardsContent flashcards
+
+        NoFlashcards errorString ->
+            noFlashcardsDisplay errorString
 
         AddingAFlashcard _ { word, definition } message ->
             addingAFlashcardView

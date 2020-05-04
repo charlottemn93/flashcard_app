@@ -69,11 +69,15 @@ update msg model =
         Nothing ->
             case msg of
                 LogInSuccessful (Ok cred) ->
+                    let
+                        ( state, command ) =
+                            ManageFlashcardsPage.initialModel cred.idToken
+                    in
                     ( { model
                         | cred = Just cred
-                        , state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel cred.idToken
+                        , state = ViewingManageFlashcards state
                       }
-                    , Cmd.none
+                    , Cmd.map ManageFlashcardsMsg command
                     )
 
                 LogInSuccessful (Err error) ->
@@ -117,8 +121,14 @@ update msg model =
                     in
                     case route of
                         ManageFlashcards ->
-                            ( { model | state = ViewingManageFlashcards <| ManageFlashcardsPage.initialModel idToken }
-                            , Cmd.none
+                            let
+                                ( state, command ) =
+                                    ManageFlashcardsPage.initialModel idToken
+                            in
+                            ( { model
+                                | state = ViewingManageFlashcards state
+                              }
+                            , Cmd.map ManageFlashcardsMsg command
                             )
 
                         Revise ->
@@ -298,7 +308,13 @@ init { idToken, accessToken, environment } url key =
                 Just c ->
                     case routeFromUrl url of
                         ManageFlashcards ->
-                            ( ViewingManageFlashcards <| ManageFlashcardsPage.initialModel c.idToken, Cmd.none )
+                            let
+                                ( state, command ) =
+                                    ManageFlashcardsPage.initialModel c.idToken
+                            in
+                            ( ViewingManageFlashcards state
+                            , Cmd.map ManageFlashcardsMsg command
+                            )
 
                         Revise ->
                             ( ViewingRevise <| RevisePage.initialModel, Cmd.none )

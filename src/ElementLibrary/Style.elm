@@ -5,13 +5,10 @@ module ElementLibrary.Style exposing
     , dangerText
     , errorMessage
     , flashcard
+    , flashcardNoPadding
     , heading
     , image
-    , infoColumn
-    , infoItemColumn
-    , infoItemLabel
     , infoMessage
-    , infoRow
     , inputField
     , inputFieldLabel
     , linkColour
@@ -42,8 +39,6 @@ import Element
         , px
         , rgb255
         , rgba255
-        , spaceEvenly
-        , spacing
         , spacingXY
         , text
         , width
@@ -175,73 +170,6 @@ successfulMessage =
 
 
 
--- INFO ROWS
-
-
-infoColumn :
-    { borderTop : Bool
-    , borderBottom : Bool
-    }
-    -> List (Attribute msg)
-infoColumn { borderTop, borderBottom } =
-    [ width fill
-    , Border.dashed
-    , Border.widthEach
-        { edges
-            | top =
-                if borderTop == True then
-                    1
-
-                else
-                    0
-            , bottom =
-                if borderBottom == True then
-                    1
-
-                else
-                    0
-        }
-    , Border.color <| rgb255 224 224 224
-    , paddingXY 0 10
-    ]
-
-
-infoRow : Bool -> List (Attribute msg)
-infoRow displayBorder =
-    (if displayBorder == True then
-        [ Border.dashed
-        , Border.widthEach
-            { edges | top = 1 }
-        , Border.color <| rgb255 224 224 224
-        ]
-
-     else
-        []
-    )
-        ++ [ spaceEvenly
-           , width fill
-           ]
-
-
-infoItemColumn : List (Attribute msg)
-infoItemColumn =
-    [ width fill
-    , paddingXY 0 10
-    , Font.size 16
-    , spacing 5
-    , alignTop
-    , Font.color <| rgb255 85 85 85
-    ]
-
-
-infoItemLabel : List (Attribute msg)
-infoItemLabel =
-    [ Font.color mutedColour
-    , Font.size 14
-    ]
-
-
-
 -- INPUT FIELDS
 
 
@@ -346,10 +274,28 @@ buttonImage =
     [ focused [] ]
 
 
-flashcard : List (Attribute msg)
-flashcard =
+flashcard : Bool -> List (Attribute msg)
+flashcard isEditable =
+    [ if isEditable then
+        padding 5
+
+      else
+        padding 40
+    , Font.size 36
+    , centerX
+    , Border.shadow
+        { blur = 3
+        , color = rgba255 0 0 0 0.2
+        , offset = ( 0, 1 )
+        , size = 1
+        }
+    , Background.color <| rgb255 255 255 136
+    ]
+
+
+flashcardNoPadding : List (Attribute msg)
+flashcardNoPadding =
     [ Font.size 36
-    , padding 40
     , centerX
     , Border.shadow
         { blur = 3
