@@ -249,7 +249,7 @@ addFlashcardButton =
             { onClickMsg = Just Add
             , src = "./images/icons/add.svg"
             , description = "Add flashcard"
-            , specifiedImageHeight = Nothing
+            , specifiedImageHeight = Just 56
             }
         )
 
@@ -271,72 +271,89 @@ noFlashcardsDisplay errorString =
         ]
 
 
-manageFlashcardsView : String -> List (Element Msg) -> Element Msg
+manageFlashcardsView : String -> Element Msg -> Element Msg
 manageFlashcardsView searchString flashcardsContent =
     column
         [ width fill
         , spacing 20
-        , padding 20
+        , padding 50
         ]
         [ el [ Element.alignTop, Element.alignLeft ] <| addFlashcardButton
-        , el [ width fill, paddingXY 50 100 ] <|
+        , el [ width fill, padding 50 ] <|
             searchField
                 { messageOnChange = UpdateSearchField
                 , fieldValue = searchString
                 , onEnterMsg = Search
                 }
-        , column
-            [ width fill
-            , spacing 10
-            ]
-            flashcardsContent
+        , flashcardsContent
         ]
 
 
-editingFlashcardsContent : { flashcards : Dict Int Flashcard, selectedIndex : Int, word : String, definition : String } -> List (Element Msg)
-editingFlashcardsContent { flashcards, selectedIndex, word, definition } =
-    flashcards
-        |> Dict.map
-            (\index f ->
-                if index == selectedIndex then
-                    ElementLibrary.Elements.editingFlashcard
-                        { onClickMsg = SaveEdits
-                        , onUpdateWordMsg = UpdateWord
-                        , onUpdateDefinitionMsg = UpdateDefinition
-                        , word = word
-                        , definition = definition
-                        }
-
-                else
-                    ElementLibrary.Elements.flashcard
-                        { isEditable = True
-                        , onClickMsg = EditFlashcard index
-                        , label =
-                            paragraph []
-                                [ text <| "Word: " ++ f.word ++ ", "
-                                , text <| "Definition: " ++ f.definition
-                                ]
-                        }
-            )
-        |> Dict.values
-
-
-defaultFlashcardsContent : Dict Int Flashcard -> List (Element Msg)
+defaultFlashcardsContent : Dict Int Flashcard -> Element Msg
 defaultFlashcardsContent flashcards =
-    flashcards
-        |> Dict.map
-            (\index { word, definition } ->
-                ElementLibrary.Elements.flashcard
-                    { isEditable = True
-                    , onClickMsg = EditFlashcard index
-                    , label =
-                        paragraph []
-                            [ text <| "Word: " ++ word ++ ", "
-                            , text <| "Definition: " ++ definition
-                            ]
-                    }
+    let
+        ( firstColumn, secondColumn ) =
+            flashcards
+                |> Dict.partition
+                    (\index _ -> index < (Dict.size flashcards // 2))
+    in
+    Element.row
+        [ width fill
+        , spacing 20
+        , paddingXY 50 0
+        ]
+        [ column
+            [ width
+                (fill
+                    |> Element.maximum 500
+                )
+            , Element.height
+                (fill
+                    |> Element.maximum 500
+                )
+            , spacing 20
+            ]
+            (firstColumn
+                |> Dict.map
+                    (\index { word, definition } ->
+                        ElementLibrary.Elements.flashcard
+                            { isEditable = True
+                            , onClickMsg = EditFlashcard index
+                            , label =
+                                paragraph []
+                                    [ text <| "Word: " ++ word ++ ", "
+                                    , text <| "Definition: " ++ definition
+                                    ]
+                            }
+                    )
+                |> Dict.values
             )
-        |> Dict.values
+        , column
+            [ width
+                (fill
+                    |> Element.maximum 500
+                )
+            , Element.height
+                (fill
+                    |> Element.maximum 500
+                )
+            , spacing 20
+            ]
+            (secondColumn
+                |> Dict.map
+                    (\index { word, definition } ->
+                        ElementLibrary.Elements.flashcard
+                            { isEditable = True
+                            , onClickMsg = EditFlashcard index
+                            , label =
+                                paragraph []
+                                    [ text <| "Word: " ++ word ++ ", Definition: " ++ definition
+                                    ]
+                            }
+                    )
+                |> Dict.values
+            )
+        ]
 
 
 view : Model -> Element Msg
@@ -348,13 +365,8 @@ view { state } =
                     manageFlashcardsView searchString <| defaultFlashcardsContent flashcards
 
                 Just _ ->
-                    manageFlashcardsView searchString <|
-                        editingFlashcardsContent
-                            { flashcards = flashcards
-                            , selectedIndex = index
-                            , word = word
-                            , definition = definition
-                            }
+                    -- TODO: Edit flashcard func
+                    manageFlashcardsView searchString <| defaultFlashcardsContent flashcards
 
         FlashcardsExist { searchString, flashcards } ->
             manageFlashcardsView searchString <| defaultFlashcardsContent flashcards
