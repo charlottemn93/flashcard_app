@@ -1,10 +1,12 @@
 module Page.Revise exposing (Model, Msg, initialModel, update, view)
 
+import Api exposing (httpError, loadFlashcardsRequest)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, padding, paragraph, row, spacing, text, width)
-import ElementLibrary.Elements exposing (buttonImage, flashcard, heading, message, shuffleButton)
+import ElementLibrary.Elements exposing (Message, buttonImage, flashcard, heading, message, shuffleButton)
 import ElementLibrary.Helpers exposing (MessageType(..))
 import Flashcard as Flashcard exposing (Flashcard)
+import Http as Http
 import Random
 import Random.List exposing (shuffle)
 
@@ -18,14 +20,20 @@ type FlashcardPart
     | Definition
 
 
-type Model
+type alias Model =
+    { state : State
+    , idToken : String
+    }
+
+
+type State
     = ShowingFlashcard
         { flashcardPart : FlashcardPart
         , currentFlashcardIndex : Int
         , flashcards : Dict Int Flashcard
         , mode : Mode
         }
-    | NoFlashcardsToShow
+    | NoFlashcardsToShow (Maybe String)
 
 
 type Mode
@@ -33,9 +41,16 @@ type Mode
     | MostRecent
 
 
-initialModel : Model
-initialModel =
-    NoFlashcardsToShow
+initialModel : String -> ( Model, Cmd Msg )
+initialModel idToken =
+    ( { idToken = idToken
+      , state = NoFlashcardsToShow Nothing
+      }
+    , loadFlashcardsRequest
+        { idToken = idToken
+        , expectMsg = LoadFlashcards
+        }
+    )
 
 
 
@@ -48,13 +63,38 @@ type Msg
     | CreatedRandomDeck (List Int)
     | ToggleFlashcard
     | ChangeMode Mode
+    | LoadFlashcards (Result Http.Error (List Flashcard))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model of
-        NoFlashcardsToShow ->
-            ( model, Cmd.none )
+    let
+        ( state, command ) =
+            updateState msg model
+    in
+    ( { model | state = state }, command )
+
+
+updateState : Msg -> Model -> ( State, Cmd Msg )
+updateState msg { state } =
+    case state of
+        NoFlashcardsToShow _ ->
+            case msg of
+                LoadFlashcards (Ok flashcards) ->
+                    ( ShowingFlashcard
+                        { flashcardPart = Word
+                        , currentFlashcardIndex = Flashcard.firstIndex
+                        , flashcards = Flashcard.fromList flashcards
+                        , mode = MostRecent
+                        }
+                    , Cmd.none
+                    )
+
+                LoadFlashcards (Err e) ->
+                    ( NoFlashcardsToShow (Just <| httpError e), Cmd.none )
+
+                _ ->
+                    ( state, Cmd.none )
 
         ShowingFlashcard details ->
             case msg of
@@ -117,6 +157,9 @@ update msg model =
                             , Cmd.none
                             )
 
+                LoadFlashcards _ ->
+                    ( state, Cmd.none )
+
 
 
 -- VIEW
@@ -178,16 +221,31 @@ showingFlashcard wordOrDef flashcards mode =
 
 
 view : Model -> Element Msg
-view model =
-    case model of
-        NoFlashcardsToShow ->
-            column
-                [ width fill
-                , centerX
-                , spacing 20
-                , padding 20
-                ]
-                [ heading "No Flash cards exist - add one by clicking the pencil icon!"
+view { state } =
+    case state of
+        NoFlashcardsToShow errorString ->
+            column [ width fill ]
+                [ row
+                    [ Element.alignTop
+                    , width fill
+                    ]
+                    [ case errorString of
+                        Nothing ->
+                            Element.none
+
+                        Just x ->
+                            message
+                                { messageString = x
+                                , messageType = Error
+                                }
+                    ]
+                , row
+                    [ width fill
+                    , centerX
+                    , spacing 20
+                    , padding 20
+                    ]
+                    [ heading "No Flash cards exist - add one by clicking the pencil icon!" ]
                 ]
 
         ShowingFlashcard { flashcardPart, currentFlashcardIndex, flashcards, mode } ->

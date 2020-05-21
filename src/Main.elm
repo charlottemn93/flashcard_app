@@ -132,8 +132,14 @@ update msg model =
                             )
 
                         Revise ->
-                            ( { model | state = ViewingRevise <| RevisePage.initialModel }
-                            , Cmd.none
+                            let
+                                ( state, command ) =
+                                    RevisePage.initialModel idToken
+                            in
+                            ( { model
+                                | state = ViewingRevise state
+                              }
+                            , Cmd.map ReviseMsg command
                             )
 
                         MyAccount ->
@@ -317,7 +323,13 @@ init { idToken, accessToken, environment } url key =
                             )
 
                         Revise ->
-                            ( ViewingRevise <| RevisePage.initialModel, Cmd.none )
+                            let
+                                ( state, command ) =
+                                    RevisePage.initialModel c.idToken
+                            in
+                            ( ViewingRevise state
+                            , Cmd.map ReviseMsg command
+                            )
 
                         MyAccount ->
                             ( ViewingMyAccount <| MyAccountPage.initialModel, Cmd.none )

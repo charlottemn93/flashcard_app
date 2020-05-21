@@ -1,4 +1,4 @@
-module Flashcard exposing (Flashcard, add, flashcardDecoder, flashcardsDecoder, fromIndex, fromList, next, orderByMostRecent, previous)
+module Flashcard exposing (Flashcard, add, firstIndex, flashcardDecoder, flashcardsDecoder, fromIndex, fromList, next, orderByMostRecent, previous)
 
 import Dict exposing (Dict)
 import Json.Decode as Decode exposing (Decoder, int, list, string)
