@@ -285,7 +285,7 @@ loginOptionsView { username, password } signupDetails =
             , width fill
             , padding 100
             ]
-            [ heading "Flash 'em - the flash card app"
+            [ heading "Flash card app"
             , inputField
                 { fieldTitle = "Username"
                 , messageOnChange = \str -> UpdateField <| SignupUsername str

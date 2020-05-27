@@ -100,4 +100,4 @@ flashcardDecoder =
 
 flashcardsDecoder : Decoder (List Flashcard)
 flashcardsDecoder =
-    list flashcardDecoder
+    Decode.field "Items" (list flashcardDecoder)

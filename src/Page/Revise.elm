@@ -173,7 +173,7 @@ showingFlashcard wordOrDef flashcards mode =
         , spacing 20
         , padding 20
         ]
-        [ heading "Flash 'em - the flash card app"
+        [ heading "Flash card app"
         , flashcard
             { onClickMsg = ToggleFlashcard
             , isEditable = False
@@ -192,7 +192,7 @@ showingFlashcard wordOrDef flashcards mode =
 
                         else
                             Nothing
-                    , src = "./images/icons/previous.svg"
+                    , src = "./images/icons/left-arrow.svg"
                     , description = "Previous"
                     , specifiedImageHeight = Nothing
                     }
@@ -205,7 +205,7 @@ showingFlashcard wordOrDef flashcards mode =
 
                         else
                             Nothing
-                    , src = "./images/icons/next.svg"
+                    , src = "./images/icons/right-arrow.svg"
                     , description = "Next"
                     , specifiedImageHeight = Nothing
                     }

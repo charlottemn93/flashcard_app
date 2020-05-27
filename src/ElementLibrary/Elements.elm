@@ -14,6 +14,7 @@ module ElementLibrary.Elements exposing
     , shuffleButton
     )
 
+import Dict exposing (Dict)
 import Element
     exposing
         ( Element
@@ -100,26 +101,41 @@ multilineInputField { fieldTitle, messageOnChange, fieldValue } =
 
 
 type alias SearchFieldValues msg =
-    { messageOnChange : String -> msg
+    { onChangeMsg : String -> msg
+    , onSelectMsg : Int -> msg
+    , searchResults : Dict Int { label : String }
     , fieldValue : String
-    , onEnterMsg : msg
+    , onEnterMsg : Int -> msg
+    , selected : Maybe Int
     }
 
 
 searchField : SearchFieldValues msg -> Element msg
-searchField { onEnterMsg, messageOnChange, fieldValue } =
-    Input.text (Style.searchField onEnterMsg)
-        { onChange = messageOnChange
-        , text = fieldValue
-        , placeholder = Just (Input.placeholder [] <| text "Search...")
-        , label =
-            Input.labelLeft [ paddingEach { edges | top = 10 } ] <|
-                Element.image
-                    (Style.image <| Just 20)
-                    { src = "./images/icons/search.svg"
-                    , description = "Search"
-                    }
-        }
+searchField { onEnterMsg, onChangeMsg, onSelectMsg, fieldValue, searchResults, selected } =
+    column [ width fill ]
+        (Input.text
+            (case selected of
+                Nothing ->
+                    Style.searchField Nothing
+
+                Just i ->
+                    Style.searchField (Just <| onEnterMsg i)
+            )
+            { onChange = onChangeMsg
+            , text = fieldValue
+            , placeholder = Just (Input.placeholder [] <| text "Search...")
+            , label =
+                Input.labelRight [] <| text ""
+            }
+            :: (searchResults
+                    |> Dict.map
+                        (\i { label } ->
+                            ( i, searchResultButton label <| onSelectMsg i )
+                        )
+                    |> Dict.values
+                    |> List.map (\( _, x ) -> x)
+               )
+        )
 
 
 passwordInputField : InputFieldValues msg -> Element msg
@@ -139,6 +155,14 @@ passwordInputField { fieldTitle, messageOnChange, fieldValue } =
 
 
 -- BUTTONS
+
+
+searchResultButton : String -> msg -> Element msg
+searchResultButton str onClickMsg =
+    Input.button Style.searchResultButton
+        { onPress = Just onClickMsg
+        , label = text str
+        }
 
 
 shuffleButton : Bool -> Maybe msg -> Element msg

@@ -15,6 +15,7 @@ module ElementLibrary.Style exposing
     , linkColour
     , mutedColour
     , searchField
+    , searchResultButton
     , shuffleImage
     , successfulMessage
     , toolbar
@@ -40,6 +41,7 @@ import Element
         , px
         , rgb255
         , rgba255
+        , spacing
         , spacingXY
         , text
         , width
@@ -202,13 +204,29 @@ onEnter msg =
         )
 
 
-searchField : msg -> List (Attribute msg)
+searchField : Maybe msg -> List (Attribute msg)
 searchField onEnterMsg =
-    inputField ++ [ onEnter onEnterMsg ]
+    case onEnterMsg of
+        Nothing ->
+            inputField
+
+        Just m ->
+            inputField ++ [ onEnter m ]
 
 
 
 -- BUTTONS
+
+
+searchResultButton : List (Attribute msg)
+searchResultButton =
+    [ width fill
+    , Border.dashed
+    , Border.widthEach { edges | bottom = 1 }
+    , Border.color <| rgb255 0 0 0
+    , paddingXY 0 10
+    , spacing 5
+    ]
 
 
 button : Bool -> List (Attribute msg)

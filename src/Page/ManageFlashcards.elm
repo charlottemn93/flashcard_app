@@ -3,7 +3,7 @@ module Page.ManageFlashcards exposing (Model, Msg, initialModel, update, view)
 import Api exposing (deleteFlashcardRequest, editFlashcardRequest, httpError, loadFlashcardsRequest, saveFlashcardRequest)
 import Dict exposing (Dict)
 import Element exposing (Element, centerX, column, el, fill, padding, paddingXY, paragraph, spacing, text, width)
-import ElementLibrary.Elements exposing (Message, buttonImage, heading, searchField)
+import ElementLibrary.Elements exposing (Message, buttonImage, heading)
 import ElementLibrary.Helpers exposing (MessageType(..))
 import Flashcard as Flashcard exposing (Flashcard)
 import Http as Http
@@ -18,29 +18,20 @@ import Time as Time exposing (Posix)
 type alias Model =
     { idToken : String
     , state : State
+    , searchString : String
+    , flashcards : Dict Int Flashcard
     }
 
 
 type State
-    = FlashcardsExist
-        { searchString : String
-        , flashcards : Dict Int Flashcard
-        }
+    = Ready String
     | EditingFlashcard
         Int
-        { searchString : String
-        , flashcards : Dict Int Flashcard
-        , word : String
+        { word : String
         , definition : String
         , message : Maybe Message
         }
-    | NoFlashcards String
     | AddingAFlashcard
-        (Maybe
-            { searchString : String
-            , flashcards : Dict Int Flashcard
-            }
-        )
         { word : String
         , definition : String
         }
@@ -50,7 +41,9 @@ type State
 initialModel : String -> ( Model, Cmd Msg )
 initialModel idToken =
     ( { idToken = idToken
-      , state = NoFlashcards ""
+      , state = Ready ""
+      , searchString = ""
+      , flashcards = Dict.empty
       }
     , loadFlashcardsRequest
         { idToken = idToken
@@ -64,9 +57,7 @@ initialModel idToken =
 
 
 type Msg
-    = UpdateSearchField String
-    | Search
-    | Add
+    = Add
     | Save
     | Delete
     | UpdateWord String
@@ -79,209 +70,230 @@ type Msg
     | FlashcardDeleted (Result Http.Error String)
 
 
+search : String -> Dict Int Flashcard -> Dict Int Flashcard
+search searchString allFlashcards =
+    allFlashcards
+        |> Dict.filter
+            (\_ { word, definition } ->
+                let
+                    lowercaseWord =
+                        String.toLower word
+
+                    lowercaseDef =
+                        String.toLower definition
+
+                    lowercaseSearchStr =
+                        String.toLower searchString
+                in
+                String.startsWith lowercaseSearchStr lowercaseWord
+                    || String.startsWith lowercaseSearchStr lowercaseDef
+            )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        ( state, command ) =
-            updateState msg model
-    in
-    ( { model | state = state }, command )
-
-
-updateState : Msg -> Model -> ( State, Cmd Msg )
-updateState msg { state, idToken } =
-    case state of
-        FlashcardsExist details ->
+    case model.state of
+        Ready _ ->
             case msg of
-                UpdateSearchField str ->
-                    ( FlashcardsExist { details | searchString = str }, Cmd.none )
-
-                Search ->
-                    ( FlashcardsExist { details | searchString = "Search activated!" }, Cmd.none )
-
                 Add ->
-                    ( AddingAFlashcard (Just details) { word = "", definition = "" } Nothing, Cmd.none )
+                    ( { model
+                        | state = AddingAFlashcard { word = "", definition = "" } Nothing
+                      }
+                    , Cmd.none
+                    )
 
                 EditFlashcard index ->
                     case
-                        Flashcard.fromIndex index details.flashcards
+                        Flashcard.fromIndex index model.flashcards
                     of
                         Nothing ->
                             -- should not happen
-                            ( state, Cmd.none )
+                            ( model, Cmd.none )
 
                         Just { word, definition } ->
-                            ( EditingFlashcard index
-                                { flashcards = details.flashcards
-                                , searchString = details.searchString
-                                , word = word
-                                , definition = definition
-                                , message = Nothing
-                                }
+                            ( { model
+                                | state =
+                                    EditingFlashcard index
+                                        { word = word
+                                        , definition = definition
+                                        , message = Nothing
+                                        }
+                              }
                             , Cmd.none
                             )
 
-                LoadFlashcards (Ok flashcards) ->
-                    ( FlashcardsExist
-                        { searchString = ""
-                        , flashcards = Flashcard.fromList flashcards
-                        }
+                LoadFlashcards (Ok cards) ->
+                    ( { model
+                        | state = Ready ""
+                        , flashcards = Flashcard.fromList cards
+                      }
                     , Cmd.none
                     )
 
                 LoadFlashcards (Err e) ->
-                    ( NoFlashcards <| httpError e, Cmd.none )
+                    ( { model
+                        | state = Ready <| httpError e
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
-                    ( state, Cmd.none )
+                    ( model, Cmd.none )
 
         EditingFlashcard index details ->
             case msg of
                 UpdateWord word ->
-                    ( EditingFlashcard index { details | word = word }, Cmd.none )
+                    ( { model
+                        | state = EditingFlashcard index { details | word = word }
+                      }
+                    , Cmd.none
+                    )
 
                 UpdateDefinition definition ->
-                    ( EditingFlashcard index { details | definition = definition }, Cmd.none )
+                    ( { model
+                        | state = EditingFlashcard index { details | definition = definition }
+                      }
+                    , Cmd.none
+                    )
 
                 Save ->
-                    ( state, Task.perform GotTimeNow Time.now )
+                    ( model, Task.perform GotTimeNow Time.now )
 
                 GotTimeNow posix ->
-                    case Flashcard.fromIndex index details.flashcards of
+                    case Flashcard.fromIndex index model.flashcards of
                         Just { id } ->
-                            ( state
+                            ( model
                             , editFlashcardRequest
                                 { definition = details.definition
                                 , word = details.word
                                 , id = id
-                                , idToken = idToken
+                                , idToken = model.idToken
                                 , posix = posix
                                 , expectMsg = FlashcardSaved
                                 }
                             )
 
                         Nothing ->
-                            ( state
+                            ( model
                             , saveFlashcardRequest
                                 { definition = details.definition
                                 , word = details.word
-                                , idToken = idToken
+                                , idToken = model.idToken
                                 , posix = posix
                                 , expectMsg = FlashcardSaved
                                 }
                             )
 
                 Delete ->
-                    case Flashcard.fromIndex index details.flashcards of
+                    case Flashcard.fromIndex index model.flashcards of
                         Just { id } ->
-                            ( state
+                            ( model
                             , deleteFlashcardRequest
                                 { id = id
-                                , idToken = idToken
+                                , idToken = model.idToken
                                 , expectMsg = FlashcardDeleted
                                 }
                             )
 
                         Nothing ->
-                            ( EditingFlashcard index { details | message = Just { messageType = Error, messageString = "Cannot delete flashcard that doesn't exist" } }
+                            ( { model
+                                | state =
+                                    EditingFlashcard index
+                                        { details
+                                            | message = Just { messageType = Error, messageString = "Cannot delete flashcard that doesn't exist" }
+                                        }
+                              }
                             , Cmd.none
                             )
 
                 FlashcardSaved (Err e) ->
-                    ( EditingFlashcard index { details | message = Just { messageType = Error, messageString = httpError e } }, Cmd.none )
+                    ( { model
+                        | state = EditingFlashcard index { details | message = Just { messageType = Error, messageString = httpError e } }
+                      }
+                    , Cmd.none
+                    )
 
                 FlashcardSaved (Ok _) ->
-                    ( EditingFlashcard index { details | message = Just { messageType = Successful, messageString = "Flashcard updated" } }
+                    ( { model
+                        | state =
+                            EditingFlashcard index
+                                { details
+                                    | message = Just { messageType = Successful, messageString = "Flashcard updated" }
+                                }
+                      }
                     , Cmd.none
                     )
 
                 GoBack ->
-                    ( FlashcardsExist
-                        { searchString = details.searchString
-                        , flashcards = details.flashcards
-                        }
+                    ( { model
+                        | state = Ready ""
+                      }
                     , loadFlashcardsRequest
-                        { idToken = idToken
+                        { idToken = model.idToken
                         , expectMsg = LoadFlashcards
                         }
                     )
 
                 _ ->
-                    ( state, Cmd.none )
+                    ( model, Cmd.none )
 
-        NoFlashcards _ ->
-            case msg of
-                Add ->
-                    ( AddingAFlashcard Nothing { word = "", definition = "" } Nothing, Cmd.none )
-
-                LoadFlashcards (Ok flashcards) ->
-                    ( FlashcardsExist
-                        { searchString = ""
-                        , flashcards = Flashcard.fromList flashcards
-                        }
-                    , Cmd.none
-                    )
-
-                LoadFlashcards (Err e) ->
-                    ( NoFlashcards <| httpError e, Cmd.none )
-
-                _ ->
-                    ( state, Cmd.none )
-
-        AddingAFlashcard searchDetails details message ->
+        AddingAFlashcard details message ->
             case msg of
                 Save ->
-                    ( state, Task.perform GotTimeNow Time.now )
+                    ( model, Task.perform GotTimeNow Time.now )
 
                 GotTimeNow posix ->
-                    ( state
+                    ( model
                     , saveFlashcardRequest
                         { posix = posix
                         , word = details.word
                         , definition = details.definition
-                        , idToken = idToken
+                        , idToken = model.idToken
                         , expectMsg = FlashcardSaved
                         }
                     )
 
                 FlashcardSaved (Err e) ->
-                    ( AddingAFlashcard searchDetails details <| Just { messageType = Error, messageString = httpError e }, Cmd.none )
+                    ( { model
+                        | state = AddingAFlashcard details <| Just { messageType = Error, messageString = httpError e }
+                      }
+                    , Cmd.none
+                    )
 
                 FlashcardSaved (Ok _) ->
-                    ( AddingAFlashcard
-                        searchDetails
-                        { details | word = "", definition = "" }
-                      <|
-                        Just { messageType = Successful, messageString = "Flashcard saved" }
+                    ( { model
+                        | state =
+                            AddingAFlashcard
+                                { details | word = "", definition = "" }
+                            <|
+                                Just { messageType = Successful, messageString = "Flashcard saved" }
+                      }
                     , Cmd.none
                     )
 
                 GoBack ->
-                    case searchDetails of
-                        Nothing ->
-                            ( NoFlashcards ""
-                            , loadFlashcardsRequest
-                                { idToken = idToken
-                                , expectMsg = LoadFlashcards
-                                }
-                            )
-
-                        Just x ->
-                            ( FlashcardsExist x
-                            , loadFlashcardsRequest
-                                { idToken = idToken
-                                , expectMsg = LoadFlashcards
-                                }
-                            )
+                    ( { model
+                        | state = Ready ""
+                      }
+                    , Cmd.none
+                    )
 
                 UpdateWord word ->
-                    ( AddingAFlashcard searchDetails { details | word = word } message, Cmd.none )
+                    ( { model
+                        | state = AddingAFlashcard { details | word = word } message
+                      }
+                    , Cmd.none
+                    )
 
                 UpdateDefinition definition ->
-                    ( AddingAFlashcard searchDetails { details | definition = definition } message, Cmd.none )
+                    ( { model
+                        | state = AddingAFlashcard { details | definition = definition } message
+                      }
+                    , Cmd.none
+                    )
 
                 _ ->
-                    ( state, Cmd.none )
+                    ( model, Cmd.none )
 
 
 
@@ -325,12 +337,8 @@ manageFlashcardsView searchString flashcardsContent =
         , padding 50
         ]
         [ el [ Element.alignTop, Element.alignLeft, paddingXY 50 0 ] <| addFlashcardButton
-        , el [ width fill, padding 50 ] <|
-            searchField
-                { messageOnChange = UpdateSearchField
-                , fieldValue = searchString
-                , onEnterMsg = Search
-                }
+
+        -- todo: ElementLibrary.Elements.searchField
         , flashcardsContent
         ]
 
@@ -403,12 +411,19 @@ defaultFlashcardsContent flashcards =
 
 
 view : Model -> Element Msg
-view { state } =
-    case state of
-        EditingFlashcard index { word, definition, searchString, flashcards, message } ->
-            case Flashcard.fromIndex index flashcards of
+view model =
+    case model.state of
+        Ready errorString ->
+            if Dict.isEmpty model.flashcards then
+                noFlashcardsDisplay errorString
+
+            else
+                manageFlashcardsView model.searchString <| defaultFlashcardsContent model.flashcards
+
+        EditingFlashcard index { word, definition, message } ->
+            case Flashcard.fromIndex index model.flashcards of
                 Nothing ->
-                    manageFlashcardsView searchString <| defaultFlashcardsContent flashcards
+                    manageFlashcardsView model.searchString <| defaultFlashcardsContent model.flashcards
 
                 Just _ ->
                     editFlashcardView
@@ -417,13 +432,7 @@ view { state } =
                         }
                         message
 
-        FlashcardsExist { searchString, flashcards } ->
-            manageFlashcardsView searchString <| defaultFlashcardsContent flashcards
-
-        NoFlashcards errorString ->
-            noFlashcardsDisplay errorString
-
-        AddingAFlashcard _ { word, definition } message ->
+        AddingAFlashcard { word, definition } message ->
             addFlashcardView
                 { word = word
                 , definition = definition
